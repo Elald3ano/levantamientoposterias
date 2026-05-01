@@ -129,23 +129,6 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 
 
 
-/* ── DRIVE STATUS ── */
-.drive-chip{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--muted);transition:all .3s}
-.drive-chip.connected{border-color:var(--green);color:var(--green)}
-.drive-chip.syncing{border-color:var(--accent);color:var(--accent)}
-.drive-chip.error{border-color:var(--red);color:var(--red)}
-.drive-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-.drive-login-btn{width:100%;padding:14px;background:white;border:none;border-radius:8px;color:#1f1f1f;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;transition:filter .15s}
-.drive-login-btn:hover{filter:brightness(.95)}
-.drive-login-btn svg{flex-shrink:0}
-.drive-skip{width:100%;padding:11px;background:transparent;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px}
-.drive-status-row{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
-.drive-status-row .ds-icon{font-size:20px}
-.drive-status-row .ds-text{flex:1}
-.drive-status-row .ds-title{font-size:13px;font-weight:700;color:var(--text)}
-.drive-status-row .ds-sub{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
-.upload-progress{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
-.upload-progress-bar{height:100%;background:var(--green);border-radius:2px;transition:width .4s;width:0%}
 
 /* ── DYNAMIC FIELDS ── */
 .dyn-groups { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
@@ -206,32 +189,18 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 <div id="project-screen">
   <div class="ps-box">
     <div class="ps-title">Poste<span style="color:var(--accent)">Field</span></div>
-    <div class="ps-sub">Levantamiento de postes en campo.<br>Primero, define el nombre del proyecto.</div>
+    <div class="ps-sub">Levantamiento de postes en campo.<br>Define el nombre del proyecto para empezar.</div>
 
-    <!-- PASO 1: Google Drive -->
-    <div id="ps-drive-step">
-      <div class="ps-label">Conectar con Google Drive</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Las fotos y el CSV se guardarán automáticamente en tu Drive mientras trabajas en campo.</p>
-      <button class="drive-login-btn" onclick="driveLogin()">
-        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.5 0 6.6 1.3 9 3.4l6.7-6.7C35.7 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.8 6C12.3 13 17.7 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.8-2.1 5.2-4.5 6.8l7 5.4c4.1-3.8 6.5-9.4 6.5-16.2z" /><path fill="#FBBC05" d="M10.4 28.7A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6z"/><path fill="#EA4335" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.4-4.6 2.2-8.2 2.2-6.3 0-11.6-4.2-13.6-10l-7.8 6C6.5 42.5 14.6 48 24 48z"/></svg>
-        CONECTAR CON GOOGLE DRIVE
-      </button>
-      <button class="drive-skip" onclick="skipDrive()">↓ Continuar sin Drive (exportar ZIP)</button>
-    </div>
-
-    <!-- PASO 2: Nombre del proyecto (aparece tras login o skip) -->
-    <div id="ps-name-step" style="display:none">
-      <div id="ps-drive-badge" style="display:none;margin-bottom:14px"></div>
-      <div class="ps-label">Nombre del Proyecto</div>
-      <input class="ps-input" id="proj-input" type="text" placeholder="Ej: Levantamiento Los Mangos" maxlength="50" oninput="sanitizeProjInput()">
-      <div class="ps-hint" id="proj-hint">Carpeta: <span id="proj-preview" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
-      <button class="ps-btn" onclick="startProject()">▶ INICIAR PROYECTO</button>
-    </div>
+    <div class="ps-label">Nombre del Proyecto</div>
+    <input class="ps-input" id="proj-input" type="text" placeholder="Ej: Levantamiento Los Mangos" maxlength="50" oninput="sanitizeProjInput()">
+    <div class="ps-hint" id="proj-hint">ID: <span id="proj-preview" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+    <button class="ps-btn" onclick="startProject()">▶ INICIAR PROYECTO</button>
 
     <div class="ps-saved" id="prev-projects-section" style="display:none">
-      <div class="ps-saved-title">Proyectos anteriores en este dispositivo</div>
+      <div class="ps-saved-title">Proyectos en Supabase</div>
       <div id="prev-projects-list"></div>
     </div>
+    <div id="ps-supabase-status" style="margin-top:12px;text-align:center;font-size:11px"></div>
   </div>
 </div>
 
@@ -239,7 +208,6 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 <header>
   <div class="logo">Poste<span>Field</span> <span style="font-size:10px;opacity:.4;font-weight:400">v5</span></div>
   <div style="display:flex;gap:8px;align-items:center">
-    <div class="drive-chip" id="drive-chip" onclick="showDriveStatus()"><div class="drive-dot"></div><span id="drive-chip-label">SIN DRIVE</span></div>
     <div class="project-chip" id="project-chip" onclick="promptChangeProject()" title="Toca para cambiar proyecto">📁 —</div>
     <button onclick="openR()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;cursor:pointer;font-family:'Barlow Condensed';font-size:12px;font-weight:700;letter-spacing:1px">📋</button>
   </div>
@@ -370,7 +338,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   <input type="file" accept="image/*" capture="environment" id="cam-1" class="fi" onchange="handleFoto(event,1)">
   <input type="file" accept="image/*" capture="environment" id="cam-2" class="fi" onchange="handleFoto(event,2)">
   <div class="info-box">
-    <span id="foto-info-text">📁 Las fotos se incluirán en el ZIP del proyecto.</span><br>
+    <span id="foto-info-text">☁️ Las fotos se subirán a Supabase automáticamente.</span><br>
     <span style="color:var(--green);font-family:'JetBrains Mono',monospace;font-size:10px" id="foto-path-preview">proyecto/fotos/POST-XXX_F01.jpg</span>
   </div>
   <div class="btn-row">
@@ -383,36 +351,13 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 <div class="panel" id="panel-3">
   <div class="sl">Estado del Proyecto</div>
 
-  <!-- Drive status -->
-  <div class="drive-status-row" id="drive-status-row">
-    <div class="ds-icon" id="ds-icon">☁️</div>
-    <div class="ds-text">
-      <div class="ds-title" id="ds-title">Sin conexión a Drive</div>
-      <div class="ds-sub" id="ds-sub">Los datos se guardan localmente</div>
-      <div class="upload-progress"><div class="upload-progress-bar" id="upload-bar"></div></div>
-    </div>
-  </div>
-  <!-- Drive connect/retry block -->
-  <div id="drive-connect-block" style="margin-bottom:12px">
-    <button onclick="driveRetry()" id="drive-retry-btn"
-      style="width:100%;padding:12px;background:var(--card);border:1px solid var(--accent);border-radius:8px;
-             color:var(--accent);font-family:'Barlow Condensed';font-size:14px;font-weight:800;
-             letter-spacing:1.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-      ☁️ CONECTAR / RECONECTAR DRIVE
-    </button>
-  </div>
-  <!-- Debug log -->
-  <div id="drive-debug" style="display:none;background:var(--input);border:1px solid var(--red);border-radius:6px;
-       padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);
-       margin-bottom:10px;max-height:150px;overflow-y:auto;white-space:pre-wrap"></div>
-
   <div class="export-card">
     <div class="ec-head">Resumen</div>
     <div class="ec-body">
       <div class="stat-row"><span class="stat-lbl">Proyecto</span><span class="stat-val ok" id="ep-name">—</span></div>
       <div class="stat-row"><span class="stat-lbl">Postes registrados</span><span class="stat-val" id="ep-count">0</span></div>
       <div class="stat-row"><span class="stat-lbl">Con coordenada</span><span class="stat-val ok" id="ep-coords">0 / 0</span></div>
-      <div class="stat-row"><span class="stat-lbl">Fotos subidas a Drive</span><span class="stat-val ok" id="ep-photos">—</span></div>
+      <div class="stat-row"><span class="stat-lbl">Fotos en Supabase</span><span class="stat-val ok" id="ep-photos">—</span></div>
     </div>
   </div>
 
@@ -420,7 +365,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   <div class="csv-preview" id="csv-preview">—</div>
 
   <button class="zip-btn" id="zip-btn" onclick="exportZIP()">
-    📦 DESCARGAR ZIP LOCAL (respaldo)
+    📦 DESCARGAR ZIP (fotos desde Supabase)
   </button>
   <button class="csv-only-btn" onclick="downloadCSVOnly()">↓ Solo CSV</button>
 
@@ -458,13 +403,13 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   </div>
   <div id="rlist"></div>
   <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">
-    <button class="btn btn-g" onclick="exportZIP();closeR()">📦 ZIP LOCAL (respaldo)</button>
+    <button class="btn btn-g" onclick="exportZIP();closeR()">📦 DESCARGAR ZIP</button>
     <button class="btn" onclick="clearAll()" style="background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.3);color:var(--red)">🗑 Borrar proyecto</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
@@ -481,23 +426,17 @@ window.onerror = function(msg, src, line, col, err) {
 let projectName = '';
 let projectKey  = '';
 let records     = [];
-let photos      = [null, null, null]; // {name, b64} per foto
+let photos      = [null, null, null];
 let uid         = '';
 let mapInst     = null, mapReady = false;
-let geoAddress  = ''; // resultado de geocodificación inversa
-let seqNum      = 0;   // consecutivo del registro en el proyecto
+let geoAddress  = '';
+let seqNum      = 0;
 
-// ── GOOGLE DRIVE ──────────────────────────────────────────────
-const GOOGLE_CLIENT_ID = '972903875733-07uf1urlk7rfv578a4a97u7slhm5uhh0.apps.googleusercontent.com';
-const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive';
-const APP_FOLDER_NAME  = 'PosteField';
-let driveToken     = null;  // OAuth access token
-let driveUser      = '';    // user email
-let driveFolders   = { root:null, project:null, fotos:null };
-let driveCSVFileId = null;  // ID of the current project's CSV in Drive
-let drivePhotosUploaded = 0;
-let driveMode      = false; // true = using Drive, false = local only
-let drivePhotoQueue = []; // photos waiting for folders to be ready
+// ── SUPABASE ──────────────────────────────────────────────────
+const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
+const SUPABASE_KEY = 'TU_ANON_KEY';
+const SB = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const BUCKET_FOTOS = 'fotos';
 
 // ═══════════════════════════════════════════════════
 // PROJECT SETUP
@@ -509,65 +448,82 @@ function sanitizeProjInput() {
   document.getElementById('proj-preview').textContent = slug ? slug + '/' : '—';
 }
 
-function startProject(nameOverride) {
-  const raw  = nameOverride || document.getElementById('proj-input').value.trim();
+async function startProject(nameOverride) {
+  const raw = nameOverride || document.getElementById('proj-input').value.trim();
   if (!raw) { showToast('Ingresa un nombre de proyecto'); return; }
   projectName = raw;
-  projectKey  = raw.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,'');
+  projectKey = raw.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,'');
 
-  // Load existing records for this project
-  records = JSON.parse(localStorage.getItem(`pf_${projectKey}`) || '[]');
+  // Load records from Supabase
+  const { data, error } = await SB
+    .from('registros')
+    .select('*')
+    .eq('proyecto', projectKey)
+    .order('seq', { ascending: true });
+
+  if (error) {
+    showToast('Error al cargar proyecto: ' + error.message);
+    console.error(error);
+    records = [];
+  } else {
+    records = data.map(r => ({ ...r, _photos: [] }));
+  }
 
   document.getElementById('project-screen').style.display = 'none';
-  document.getElementById('project-chip').textContent = '📁 ' + projectName.slice(0,20);
+  document.getElementById('project-chip').textContent = '📁 ' + projectName.slice(0, 20);
 
   seqNum = records.length + 1;
   uid = genUID();
   refreshFilenames();
   updateExportPanel();
   buildDynUI();
-  if(driveMode) driveInitFolders(projectKey);
 }
 
-function loadPrevProjects() {
-  const keys = Object.keys(localStorage).filter(k => k.startsWith('pf_'));
-  const sec  = document.getElementById('prev-projects-section');
+async function loadPrevProjects() {
+  const statusEl = document.getElementById('ps-supabase-status');
+  const sec = document.getElementById('prev-projects-section');
   const list = document.getElementById('prev-projects-list');
-  if (!keys.length) { sec.style.display='none'; return; }
-  sec.style.display = 'block';
-  list.innerHTML = keys.map(k => {
-    const name  = k.replace(/^pf_/,'').replace(/_/g,' ');
-    const recs  = JSON.parse(localStorage.getItem(k)||'[]');
-    return `<div class="ps-prev-item" onclick="startProject('${name}')">
-      <div><div class="ps-prev-name">${name}</div><div class="ps-prev-meta">${recs.length} poste(s) guardado(s)</div></div>
-      <div class="ps-prev-count">${recs.length} ▶</div>
-    </div>`;
-  }).join('');
+
+  try {
+    const { data, error } = await SB
+      .from('registros')
+      .select('proyecto');
+
+    if (error) {
+      statusEl.textContent = '⚠️ Sin conexión a Supabase — verifica credenciales';
+      statusEl.style.color = 'var(--red)';
+      sec.style.display = 'none';
+      return;
+    }
+
+    const proyectos = [...new Set(data.map(r => r.proyecto))];
+    if (!proyectos.length) { sec.style.display = 'none'; return; }
+
+    sec.style.display = 'block';
+    statusEl.textContent = '☁️ Supabase conectado';
+    statusEl.style.color = 'var(--green)';
+
+    list.innerHTML = proyectos.map(p => {
+      const name = p.replace(/_/g, ' ');
+      return `<div class="ps-prev-item" onclick="startProject('${name}')">
+        <div><div class="ps-prev-name">${name}</div><div class="ps-prev-meta">Proyecto en la nube</div></div>
+        <div class="ps-prev-count">▶</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    statusEl.textContent = '⚠️ Sin conexión — verifica URL y anon key de Supabase';
+    statusEl.style.color = 'var(--red)';
+    sec.style.display = 'none';
+  }
 }
 loadPrevProjects();
-// Safety net: if buildDynUI was never called or failed, retry after DOM settles
-setTimeout(() => {
-  const el = document.getElementById('dyn-groups');
-  if(el && el.children.length === 0 && typeof DYNAMIC_FIELDS !== 'undefined') {
-    console.log('[Safety] dyn-groups empty, re-running buildDynUI');
-    buildDynUI();
-  }
-}, 500);
 
 function promptChangeProject() {
-  if(confirm('¿Cambiar de proyecto? Se guardará el progreso actual.')) {
+  if (confirm('¿Cambiar de proyecto? Se guardará el progreso actual.')) {
     document.getElementById('proj-input').value = '';
     document.getElementById('proj-preview').textContent = '—';
     document.getElementById('project-screen').style.display = 'flex';
     loadPrevProjects();
-// Safety net: if buildDynUI was never called or failed, retry after DOM settles
-setTimeout(() => {
-  const el = document.getElementById('dyn-groups');
-  if(el && el.children.length === 0 && typeof DYNAMIC_FIELDS !== 'undefined') {
-    console.log('[Safety] dyn-groups empty, re-running buildDynUI');
-    buildDynUI();
-  }
-}, 500);
   }
 }
 
@@ -588,10 +544,6 @@ function refreshFilenames() {
   }
   const pp = document.getElementById('foto-path-preview');
   if(pp) pp.textContent = `${folder}/fotos/${uid}_F01.jpg`;
-  const fi = document.getElementById('foto-info-text');
-  if(fi) fi.textContent = driveMode
-    ? '☁️ Las fotos se subirán a Google Drive automáticamente.'
-    : '📁 Las fotos se incluirán en el ZIP del proyecto.';
 }
 
 // ═══════════════════════════════════════════════════
@@ -610,274 +562,62 @@ function goTo(step) {
 
 
 // ═══════════════════════════════════════════════════
-// GOOGLE DRIVE INTEGRATION
+// SUPABASE — Cloud DB + Storage
 // ═══════════════════════════════════════════════════
 
-function driveLogin() {
-  if(typeof google === 'undefined') {
-    showToast('Cargando Google... intenta de nuevo en 2 segundos');
-    return;
-  }
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: DRIVE_SCOPE,
-    prompt: 'consent',
-    callback: async (resp) => {
-      if(resp.error) { showToast('Error al conectar con Google: ' + resp.error); return; }
-      driveToken = resp.access_token;
-      driveMode  = true;
-      // Get user info
-      try {
-        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${driveToken}` }
-        });
-        const u = await r.json();
-        driveUser = u.email || 'Google Drive';
-      } catch(e) { driveUser = 'Google Drive'; }
-
-      // Show name step with badge
-      document.getElementById('ps-drive-step').style.display = 'none';
-      document.getElementById('ps-name-step').style.display  = 'block';
-      const badge = document.getElementById('ps-drive-badge');
-      badge.style.display = 'flex';
-      badge.style.alignItems = 'center';
-      badge.style.gap = '8px';
-      badge.innerHTML = `<span style="color:var(--green);font-size:18px">✓</span>
-        <span style="font-size:12px;color:var(--green);font-family:'JetBrains Mono',monospace">${driveUser}</span>`;
-      setDriveChip('connected', '✓ DRIVE');
-      // If project already active (e.g. resumed session), init folders now
-      if(projectKey) driveInitFolders(projectKey);
-    }
-  });
-  client.requestAccessToken();
-}
-
-function skipDrive() {
-  driveMode = false;
-  document.getElementById('ps-drive-step').style.display = 'none';
-  document.getElementById('ps-name-step').style.display  = 'block';
-  setDriveChip('', 'SIN DRIVE');
-}
-
-function setDriveChip(state, label) {
-  const chip = document.getElementById('drive-chip');
-  chip.className = 'drive-chip' + (state ? ' ' + state : '');
-  document.getElementById('drive-chip-label').textContent = label;
-}
-
-function showDriveStatus() {
-  if(!driveMode) { showToast('Drive no conectado — usando modo local'); return; }
-  showToast(`☁️ ${driveUser} · ${drivePhotosUploaded} fotos subidas`);
-}
-
-// Create a folder in Drive, returns its ID
-async function driveAPICall(url, method, body) {
-  const opts = {
-    method: method || 'GET',
-    headers: { Authorization: `Bearer ${driveToken}` }
-  };
-  if(body) {
-    opts.headers['Content-Type'] = 'application/json';
-    opts.body = JSON.stringify(body);
-  }
-  const r = await fetch(url, opts);
-  const json = await r.json();
-  if(!r.ok) throw new Error(json.error?.message || `HTTP ${r.status}`);
-  return json;
-}
-
-async function driveFindFolder(name, parentId) {
-  let q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  if(parentId) q += ` and '${parentId}' in parents`;
-  const data = await driveAPICall(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`
-  );
-  return (data.files && data.files.length > 0) ? data.files[0].id : null;
-}
-
-async function driveCreateFolder(name, parentId) {
-  const meta = { name, mimeType:'application/vnd.google-apps.folder' };
-  if(parentId) meta.parents = [parentId];
-  const f = await driveAPICall('https://www.googleapis.com/drive/v3/files', 'POST', meta);
-  return f.id;
-}
-
-async function driveFindOrCreateFolder(name, parentId) {
-  const found = await driveFindFolder(name, parentId);
-  if(found) return found;
-  return await driveCreateFolder(name, parentId);
-}
-
-// Initialize Drive folder structure for the project
-async function driveInitFolders(projKey) {
-  if(!driveMode || !driveToken) return;
-  driveLog('Iniciando conexión con Drive...');
-  updateDriveStatus('syncing', '⏳', 'Conectando con Drive...', projKey);
-  setDriveChip('syncing', '⏳ DRIVE');
-  try {
-    driveLog('Buscando/creando carpeta PosteField...');
-    driveFolders.root = await driveFindOrCreateFolder(APP_FOLDER_NAME, null);
-    driveLog(`PosteField OK (${driveFolders.root})`);
-
-    driveLog(`Buscando/creando carpeta ${projKey}...`);
-    driveFolders.project = await driveFindOrCreateFolder(projKey, driveFolders.root);
-    driveLog(`Proyecto OK (${driveFolders.project})`);
-
-    driveLog('Buscando/creando carpeta fotos...');
-    driveFolders.fotos = await driveFindOrCreateFolder('fotos', driveFolders.project);
-    driveLog(`Fotos OK (${driveFolders.fotos})`);
-
-    // Find existing CSV
-    const csvName = `${projKey}_datos.csv`;
-    const existingCSV = await driveFindFolder(csvName, driveFolders.project);
-    driveCSVFileId = existingCSV;
-    driveLog(existingCSV ? `CSV existente: ${existingCSV}` : 'CSV nuevo (se creará al guardar)');
-
-    updateDriveStatus('connected', '✓', `Drive listo · ${driveUser}`, `Mi Drive/PosteField/${projKey}/`);
-    const cb = document.getElementById('drive-connect-block');
-    if(cb) cb.style.display = 'none';
-    setDriveChip('connected', '✓ DRIVE');
-    showToast('☁️ Drive conectado y listo');
-    // Flush any photos that were taken before folders were ready
-    if(drivePhotoQueue.length > 0) {
-      driveLog(`Subiendo ${drivePhotoQueue.length} foto(s) en cola...`);
-      for(const {b64, filename} of drivePhotoQueue) {
-        await driveUploadPhoto(b64, filename);
-      }
-      drivePhotoQueue = [];
-      setDriveChip('connected', `✓ ${drivePhotosUploaded} FOTOS`);
-    }
-  } catch(e) {
-    driveLog('ERROR: ' + e.message, true);
-    driveLog('Stack: ' + (e.stack||'n/a'), true);
-    updateDriveStatus('error', '✗', 'Error: ' + e.message, 'Toca ↺ para reintentar');
-    setDriveChip('error', '✗ DRIVE');
-    showToast('Error Drive — toca CONECTAR para reintentar');
-    const cb = document.getElementById('drive-connect-block');
-    if(cb) { cb.style.display='block'; document.getElementById('drive-retry-btn').textContent='↺ REINTENTAR CONEXIÓN DRIVE'; }
-  }
-}
-
-// Visible debug log
-const _driveLogs = [];
-function driveLog(msg, isError) {
-  console.log('[Drive]', msg);
-  _driveLogs.push(msg);
-  const sub = document.getElementById('ds-sub');
-  if(sub) sub.textContent = msg;
-  if(isError) {
-    const dbg = document.getElementById('drive-debug');
-    if(dbg) {
-      dbg.style.display = 'block';
-      dbg.textContent = _driveLogs.join('\n');
-    }
-  }
-}
-
-function driveRetry() {
-  const dbg = document.getElementById('drive-debug');
-  if(dbg) { dbg.style.display='none'; dbg.textContent=''; }
-  _driveLogs.length = 0;
-
-  if(!projectKey) { showToast('Primero inicia un proyecto'); return; }
-
-  if(!driveToken) {
-    // No token — trigger login then init
-    driveLog('Sin token — solicitando login...');
-    if(typeof google === 'undefined') { showToast('Cargando Google SDK...'); return; }
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: DRIVE_SCOPE,
-      prompt: 'consent',
-      callback: async (resp) => {
-        if(resp.error) { driveLog('Login error: ' + resp.error, true); return; }
-        driveToken = resp.access_token;
-        driveMode  = true;
-        setDriveChip('connected', '✓ DRIVE');
-        driveInitFolders(projectKey);
-      }
-    });
-    client.requestAccessToken();
-    return;
-  }
-
-  // Have token — just init folders
-  driveMode = true;
-  driveInitFolders(projectKey);
-}
-
-// Upload a photo blob to Drive fotos/ folder
-async function driveUploadPhoto(b64, filename) {
-  if(!driveMode || !driveToken) return;
-  if(!driveFolders.fotos) {
-    // Folders not ready yet — queue for later
-    drivePhotoQueue.push({b64, filename});
-    driveLog(`Foto ${filename} en cola (esperando carpetas...)`);
-    return;
-  }
+async function sbUploadPhoto(b64, filename) {
   const binary = atob(b64.split(',')[1]);
   const bytes  = new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
   const blob = new Blob([bytes], {type:'image/jpeg'});
 
-  const meta = JSON.stringify({ name:filename, parents:[driveFolders.fotos] });
-  const form = new FormData();
-  form.append('metadata', new Blob([meta], {type:'application/json'}));
-  form.append('file', blob);
-
-  await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method:'POST',
-    headers:{ Authorization:`Bearer ${driveToken}` },
-    body: form
+  const path = `${projectKey}/${filename}`;
+  const { data, error } = await SB.storage.from(BUCKET_FOTOS).upload(path, blob, {
+    contentType: 'image/jpeg',
+    upsert: true
   });
-  drivePhotosUploaded++;
+  if (error) throw error;
+
+  const { data: { publicUrl } } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
+  return publicUrl;
 }
 
-// Upload or update CSV in Drive
-async function driveUploadCSV() {
-  if(!driveMode || !driveToken || !driveFolders.project) return;
-  const csvName = `${projectKey}_datos.csv`;
-  const content = '﻿' + buildCSV();
-  const blob    = new Blob([content], {type:'text/csv'});
-
-  if(driveCSVFileId) {
-    // Update existing file
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveCSVFileId}?uploadType=media`, {
-      method:'PATCH',
-      headers:{ Authorization:`Bearer ${driveToken}`, 'Content-Type':'text/csv' },
-      body: blob
+async function sbSaveRecord(record) {
+  const { error } = await SB
+    .from('registros')
+    .insert({
+      proyecto: projectKey,
+      seq: record.seq,
+      uid: record.uid,
+      fecha: record.fecha,
+      hora: record.hora,
+      n_poste: record.n_poste,
+      direccion: record.direccion,
+      material: record.material,
+      altura: record.altura,
+      carga: record.carga,
+      tension: record.tension,
+      estado: record.estado,
+      lat: record.lat,
+      lng: record.lng,
+      equipamiento: record.equipamiento || {},
+      foto1: record.foto1,
+      foto2: record.foto2,
+      foto3: record.foto3,
+      observaciones: record.observaciones
     });
-  } else {
-    // Create new file
-    const meta = JSON.stringify({ name:csvName, parents:[driveFolders.project] });
-    const form  = new FormData();
-    form.append('metadata', new Blob([meta], {type:'application/json'}));
-    form.append('file', blob);
-    const r    = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-      method:'POST',
-      headers:{ Authorization:`Bearer ${driveToken}` },
-      body: form
-    });
-    const f = await r.json();
-    driveCSVFileId = f.id;
-  }
+  if (error) throw error;
 }
 
-function updateDriveStatus(state, icon, title, sub) {
-  document.getElementById('ds-icon').textContent  = icon;
-  document.getElementById('ds-title').textContent = title;
-  document.getElementById('ds-sub').textContent   = sub;
-  const row = document.getElementById('drive-status-row');
-  if(row) {
-    row.style.borderColor = state==='connected' ? 'var(--green)' :
-                            state==='syncing'   ? 'var(--accent)' :
-                            state==='error'     ? 'var(--red)'    : 'var(--border)';
+async function sbDeleteProject(projKey) {
+  // Delete photos from storage
+  const { data: files } = await SB.storage.from(BUCKET_FOTOS).list(projKey);
+  if (files && files.length) {
+    const paths = files.map(f => `${projKey}/${f.name}`);
+    await SB.storage.from(BUCKET_FOTOS).remove(paths);
   }
-}
-
-function setUploadProgress(pct) {
-  const bar = document.getElementById('upload-bar');
-  if(bar) bar.style.width = pct + '%';
+  // Delete records
+  await SB.from('registros').delete().eq('proyecto', projKey);
 }
 
 
@@ -1152,18 +892,16 @@ function handleFoto(e,i) {
       im.src=b64; slot.classList.add('done');
       document.getElementById(`fn-${i}`).textContent=name;
       showToast(`📸 Foto ${i+1} georreferenciada ✓`);
-      // Upload to Drive in background
-      if(driveMode && driveFolders.fotos) {
-        setDriveChip('syncing', '↑ SUBIENDO');
-        updateDriveStatus('syncing', '↑', `Subiendo ${name}...`, 'Por favor no cierres la app');
-        driveUploadPhoto(b64, name)
-          .then(()=>{
-            setDriveChip('connected', `✓ ${drivePhotosUploaded} FOTOS`);
-            updateDriveStatus('connected', '✓', `${name} guardada en Drive`, `PosteField/${projectKey}/fotos/`);
-            document.getElementById('ep-photos').textContent = drivePhotosUploaded + ' fotos';
-          })
-          .catch(()=>{ setDriveChip('error','ERROR'); showToast('Error al subir foto a Drive'); });
-      }
+      // Upload to Supabase Storage in background
+      sbUploadPhoto(b64, name)
+        .then(url => {
+          photos[i].url = url;
+          showToast(`☁️ ${name} subida a Supabase`);
+        })
+        .catch(e => {
+          console.error('Error subiendo foto:', e);
+          showToast('⚠️ Error al subir foto — se guardará localmente');
+        });
     };
     img.src=ev.target.result;
   };
@@ -1182,31 +920,31 @@ function rmFoto(e,i) {
 // ═══════════════════════════════════════════════════
 // SAVE RECORD
 // ═══════════════════════════════════════════════════
-function saveAndExport() {
+async function saveAndExport() {
   const now = new Date();
   const lat = document.getElementById('f-lat').value;
   const lng = document.getElementById('f-lng').value;
 
-  // Leer campos dinámicos
-  const dynData = {};
+  const equipamiento = {};
   DYNAMIC_FIELDS.forEach(df => {
     const el = document.getElementById(`dyn-val-${df.id}`);
-    dynData[df.id] = (el && el.closest('.dyn-field.open')) ? (el.value || '0') : '0';
+    equipamiento[df.id] = (el && el.closest('.dyn-field.open')) ? (el.value || '0') : '0';
   });
 
   const record = {
     uid,
+    seq: seqNum,
     fecha: now.toLocaleDateString('es-CO'),
     hora:  now.toLocaleTimeString('es-CO'),
     n_poste:    document.getElementById('f-num').value,
     direccion:  document.getElementById('f-dir').value,
     material:   document.getElementById('f-mat').value,
-    altura:   document.getElementById('f-alt').value,
-    carga:    document.getElementById('f-car').value,
+    altura:     document.getElementById('f-alt').value,
+    carga:      document.getElementById('f-car').value,
     tension:    document.getElementById('f-ten').value,
     estado:     document.getElementById('f-est').value,
     lat, lng,
-    ...dynData,
+    equipamiento,
     foto1: photos[0]?.name||'',
     foto2: photos[1]?.name||'',
     foto3: photos[2]?.name||'',
@@ -1214,25 +952,17 @@ function saveAndExport() {
     _photos: photos.filter(Boolean)
   };
 
-  record.seq = seqNum; // consecutivo asignado al iniciar el registro
   records.push(record);
-  // Save without _photos to localStorage (too heavy)
-  const slim = records.map(r => { const {_photos,...rest}=r; return rest; });
-  localStorage.setItem(`pf_${projectKey}`, JSON.stringify(slim));
 
-  showToast(`✓ ${uid} guardado · ${records.length} postes en total`);
-  // Update CSV in Drive
-  if(driveMode && driveFolders.project) {
-    setDriveChip('syncing', '↑ CSV');
-    driveUploadCSV()
-      .then(()=>{
-        setDriveChip('connected', `✓ DRIVE`);
-        updateDriveStatus('connected', '✓',
-          `CSV actualizado · ${records.length} poste(s)`,
-          `PosteField/${projectKey}/${projectKey}_datos.csv`);
-      })
-      .catch(()=>{ setDriveChip('error','ERROR'); showToast('Error al actualizar CSV en Drive'); });
+  // Save to Supabase
+  try {
+    await sbSaveRecord(record);
+    showToast(`✓ ${uid} guardado en Supabase · ${records.length} postes`);
+  } catch(e) {
+    console.error('Error guardando en Supabase:', e);
+    showToast(`⚠️ ${uid} guardado local · error en Supabase: ${e.message}`);
   }
+
   goTo(3);
 }
 
@@ -1357,7 +1087,8 @@ function buildCSV() {
       r.seq||'', r.uid, r.fecha, r.hora, r.n_poste, r.direccion||'',
       r.material||'', r.altura||'', r.carga||'', r.tension||'', r.estado||''
     ];
-    const dyn = DYN_IDS.map(id => r[id] !== undefined ? r[id] : '0');
+    const eq = r.equipamiento || {};
+    const dyn = DYN_IDS.map(id => eq[id] !== undefined ? eq[id] : '0');
     const end = [
       `"${r.lat||''}","${r.lng||''}"`, r.foto1||'', r.foto2||'', r.foto3||'',
       `"${(r.observaciones||'').replace(/"/g,'""')}"`
@@ -1373,7 +1104,7 @@ function updateExportPanel() {
   const allPhotos = records.flatMap(r => r._photos||[]);
   const photoCount = allPhotos.length;
 
-  // Approx size
+  // Approx size for ZIP estimate
   let totalB64 = allPhotos.reduce((s,p)=>s+(p.b64?.length||0),0);
   const csvSize = buildCSV().length;
   const approxMB = ((totalB64*0.75+csvSize)/1048576).toFixed(1);
@@ -1382,17 +1113,8 @@ function updateExportPanel() {
   setEl('ep-name',   projectName || '—');
   setEl('ep-count',  n);
   setEl('ep-coords', `${wc} / ${n}`);
-  setEl('ep-photos', driveMode ? `${drivePhotosUploaded} en Drive` : `${photoCount} en sesión`);
+  setEl('ep-photos', `${photoCount} subidas`);
   setEl('ep-size',   approxMB + ' MB');
-
-  const folder = projectKey;
-  setEl('zip-folder-name', folder+'/');
-  setEl('zip-csv-name',    folder+'_datos.csv');
-
-  const photoList = document.getElementById('zip-photo-list');
-  if(photoList) photoList.innerHTML = allPhotos.length
-    ? allPhotos.map(p=>`<div class="fp-item ready"><span class="fi-icon">🖼</span>${p.name}</div>`).join('')
-    : `<div class="fp-item">(Sin fotos en esta sesión)</div>`;
 
   // CSV preview
   const csvStr = buildCSV();
@@ -1417,16 +1139,40 @@ async function exportZIP() {
     // CSV
     folder.file(`${projectKey}_datos.csv`, '\uFEFF'+buildCSV());
 
-    // Photos from all records that have _photos
+    // Photos: from memory (b64) or download from Supabase Storage
+    const allPhotos = [];
     records.forEach(r => {
-      (r._photos||[]).forEach(p => {
-        if(p?.b64) {
-          const b64data = p.b64.split(',')[1];
-          fotos.file(p.name, b64data, {base64:true});
-        }
-      });
+      (r._photos||[]).forEach(p => allPhotos.push(p));
     });
 
+    btn.textContent = `⏳ Descargando ${allPhotos.length} fotos...`;
+    for (const p of allPhotos) {
+      if (p.b64) {
+        const b64data = p.b64.split(',')[1];
+        fotos.file(p.name, b64data, { base64: true });
+      } else if (p.url) {
+        try {
+          const resp = await fetch(p.url);
+          const blob = await resp.blob();
+          fotos.file(p.name, blob);
+        } catch(e) {
+          console.warn(`No se pudo descargar ${p.name}:`, e);
+        }
+      } else {
+        // Try Supabase URL by name
+        const path = `${projectKey}/${p.name}`;
+        const { data } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
+        try {
+          const resp = await fetch(data.publicUrl);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            fotos.file(p.name, blob);
+          }
+        } catch(e) { /* skip */ }
+      }
+    }
+
+    btn.textContent = '⏳ Comprimiendo...';
     const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}}, meta => {
       btn.textContent = `⏳ Comprimiendo... ${meta.percent.toFixed(0)}%`;
     });
@@ -1443,7 +1189,7 @@ async function exportZIP() {
     showToast('Error al generar ZIP: '+err.message);
     console.error(err);
   } finally {
-    btn.disabled=false; btn.textContent='📦 DESCARGAR ZIP DEL PROYECTO';
+    btn.disabled=false; btn.textContent='📦 DESCARGAR ZIP (fotos desde Supabase)';
   }
 }
 
@@ -1479,10 +1225,16 @@ function renderR(){
     </div>`).join('');
 }
 
-function clearAll(){
-  if(!confirm(`¿Borrar todos los registros del proyecto "${projectName}"?`))return;
-  records=[]; localStorage.removeItem(`pf_${projectKey}`); renderR();
-  showToast('Proyecto borrado');
+async function clearAll(){
+  if(!confirm(`¿Borrar todos los registros del proyecto "${projectName}" de Supabase?`)) return;
+  try {
+    await sbDeleteProject(projectKey);
+    records = [];
+    showToast('Proyecto borrado de Supabase');
+  } catch(e) {
+    showToast('Error al borrar: ' + e.message);
+  }
+  renderR();
 }
 
 // ═══════════════════════════════════════════════════
