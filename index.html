@@ -58,14 +58,6 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--accent)}
 .f select option{background:var(--card)}.f textarea{resize:vertical;min-height:60px}
 
-/* ── ESTADO ── */
-.rg{display:flex;gap:8px;flex-wrap:wrap}
-.ro{display:none}
-.rl{padding:8px 12px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;text-transform:uppercase}
-.ro:checked+.rl{border-color:var(--accent);background:rgba(245,166,35,.15);color:var(--accent)}
-.ro[value="Bueno"]:checked+.rl{border-color:var(--green);background:rgba(61,214,140,.12);color:var(--green)}
-.ro[value="Malo"]:checked+.rl{border-color:var(--red);background:rgba(255,92,92,.12);color:var(--red)}
-
 /* ── COORDENADA ── */
 .coord-block{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:8px}
 .gps-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s}
@@ -413,6 +405,24 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
+// CanvasRenderingContext2D.roundRect polyfill for older browsers
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
+    this.beginPath();
+    this.moveTo(x + r.tl, y);
+    this.lineTo(x + w - r.tr, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+    this.lineTo(x + w, y + h - r.br);
+    this.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+    this.lineTo(x + r.bl, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+    this.lineTo(x, y + r.tl);
+    this.quadraticCurveTo(x, y, x + r.tl, y);
+    this.closePath();
+  };
+}
+
 // Global error catcher — shows errors visibly in field
 window.onerror = function(msg, src, line, col, err) {
   const el = document.getElementById('js-error-banner');
@@ -441,6 +451,12 @@ const BUCKET_FOTOS = 'fotos';
 // ═══════════════════════════════════════════════════
 // PROJECT SETUP
 // ═══════════════════════════════════════════════════
+function escHtml(str) {
+  const el = document.createElement('span');
+  el.textContent = str || '';
+  return el.innerHTML;
+}
+
 function sanitizeProjInput() {
   const raw  = document.getElementById('proj-input').value;
   const safe = raw.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ \-_]/g,'').trim();
@@ -466,13 +482,22 @@ async function startProject(nameOverride) {
     console.error(error);
     records = [];
   } else {
-    records = data.map(r => ({ ...r, _photos: [] }));
+    records = data.map(r => ({
+      ...r,
+      _photos: [r.foto1, r.foto2, r.foto3]
+        .filter(Boolean)
+        .map(name => {
+          const path = `${projectKey}/${name}`;
+          const { data: d } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
+          return { name, url: d?.publicUrl || '' };
+        })
+    }));
   }
 
   document.getElementById('project-screen').style.display = 'none';
   document.getElementById('project-chip').textContent = '📁 ' + projectName.slice(0, 20);
 
-  seqNum = records.length + 1;
+  seqNum = records.length > 0 ? Math.max(...records.map(r => r.seq)) + 1 : 1;
   uid = genUID();
   refreshFilenames();
   updateExportPanel();
@@ -487,16 +512,17 @@ async function loadPrevProjects() {
   try {
     const { data, error } = await SB
       .from('registros')
-      .select('proyecto');
+      .select('proyecto')
+      .limit(1000);
 
     if (error) {
-      statusEl.textContent = '⚠️ Sin conexión a Supabase — verifica credenciales';
+      statusEl.textContent = '⚠️ Error: ' + error.message;
       statusEl.style.color = 'var(--red)';
       sec.style.display = 'none';
       return;
     }
 
-    const proyectos = [...new Set(data.map(r => r.proyecto))];
+    const proyectos = [...new Set(data.map(r => r.proyecto).filter(Boolean))];
     if (!proyectos.length) { sec.style.display = 'none'; return; }
 
     sec.style.display = 'block';
@@ -504,9 +530,9 @@ async function loadPrevProjects() {
     statusEl.style.color = 'var(--green)';
 
     list.innerHTML = proyectos.map(p => {
-      const name = p.replace(/_/g, ' ');
-      return `<div class="ps-prev-item" onclick="startProject('${name}')">
-        <div><div class="ps-prev-name">${name}</div><div class="ps-prev-meta">Proyecto en la nube</div></div>
+      const safeName = escHtml(p.replace(/_/g, ' '));
+      return `<div class="ps-prev-item" onclick="startProject('${safeName.replace(/'/g, "\\'")}')">
+        <div><div class="ps-prev-name">${safeName}</div><div class="ps-prev-meta">Proyecto en la nube</div></div>
         <div class="ps-prev-count">▶</div>
       </div>`;
     }).join('');
@@ -600,6 +626,7 @@ async function sbSaveRecord(record) {
       estado: record.estado,
       lat: record.lat,
       lng: record.lng,
+      ubicacion: record.ubicacion || '',
       equipamiento: record.equipamiento || {},
       foto1: record.foto1,
       foto2: record.foto2,
@@ -627,6 +654,7 @@ async function sbDeleteProject(projKey) {
 function captureGPS() {
   if(!navigator.geolocation) { showToast('GPS no disponible'); return; }
   const btn = document.getElementById('gps-btn');
+  if(btn.classList.contains('loading')) return; // prevent double-tap
   const acc = document.getElementById('gps-acc');
   btn.className='gps-btn loading'; btn.textContent='⏳ Buscando señal GPS...';
 
@@ -892,15 +920,17 @@ function handleFoto(e,i) {
       im.src=b64; slot.classList.add('done');
       document.getElementById(`fn-${i}`).textContent=name;
       showToast(`📸 Foto ${i+1} georreferenciada ✓`);
-      // Upload to Supabase Storage in background
-      sbUploadPhoto(b64, name)
+      // Upload to Supabase Storage in background — save promise for saveAndExport
+      photos[i]._uploadPromise = sbUploadPhoto(b64, name)
         .then(url => {
           photos[i].url = url;
           showToast(`☁️ ${name} subida a Supabase`);
+          return url;
         })
         .catch(e => {
           console.error('Error subiendo foto:', e);
           showToast('⚠️ Error al subir foto — se guardará localmente');
+          throw e;
         });
     };
     img.src=ev.target.result;
@@ -925,6 +955,12 @@ async function saveAndExport() {
   const lat = document.getElementById('f-lat').value;
   const lng = document.getElementById('f-lng').value;
 
+  // Await any pending photo uploads
+  await Promise.allSettled(photos.filter(Boolean).map(p => {
+    if (p._uploadPromise) return p._uploadPromise;
+    return Promise.resolve();
+  }));
+
   const equipamiento = {};
   DYNAMIC_FIELDS.forEach(df => {
     const el = document.getElementById(`dyn-val-${df.id}`);
@@ -944,6 +980,7 @@ async function saveAndExport() {
     tension:    document.getElementById('f-ten').value,
     estado:     document.getElementById('f-est').value,
     lat, lng,
+    ubicacion: geoAddress || '',
     equipamiento,
     foto1: photos[0]?.name||'',
     foto2: photos[1]?.name||'',
@@ -952,15 +989,15 @@ async function saveAndExport() {
     _photos: photos.filter(Boolean)
   };
 
-  records.push(record);
-
   // Save to Supabase
   try {
     await sbSaveRecord(record);
+    records.push(record);
     showToast(`✓ ${uid} guardado en Supabase · ${records.length} postes`);
   } catch(e) {
     console.error('Error guardando en Supabase:', e);
-    showToast(`⚠️ ${uid} guardado local · error en Supabase: ${e.message}`);
+    showToast(`⚠️ Error en Supabase: ${e.message}. Intenta de nuevo.`);
+    return;
   }
 
   goTo(3);
@@ -988,8 +1025,9 @@ function newRecord() {
   }
   const btn=document.getElementById('gps-btn');
   btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
+  if(mapInst) { mapInst.remove(); mapInst = null; }
   mapReady=false; // recenter map for next pole
-  seqNum = records.length + 1;
+  seqNum = records.length > 0 ? Math.max(...records.map(r => r.seq)) + 1 : 1;
   uid=genUID(); refreshFilenames();
   goTo(0);
 }
@@ -1077,7 +1115,7 @@ function toggleChip(id) {
 const DYN_IDS = DYNAMIC_FIELDS.map(d => d.id);
 const CSV_BASE = ['SEQ','UID','FECHA','HORA','N_POSTE','DIRECCION','MATERIAL','ALTURA_M','CARGA_DAN','TENSION','ESTADO'];
 const CSV_DYN  = DYN_IDS.map(id => id.toUpperCase());
-const CSV_END  = ['LAT','LNG','FOTO_1','FOTO_2','FOTO_3','OBSERVACIONES'];
+const CSV_END  = ['UBICACION','LAT','LNG','FOTO_1','FOTO_2','FOTO_3','OBSERVACIONES'];
 const CSV_COLS = [...CSV_BASE, ...CSV_DYN, ...CSV_END];
 
 function buildCSV() {
@@ -1090,6 +1128,7 @@ function buildCSV() {
     const eq = r.equipamiento || {};
     const dyn = DYN_IDS.map(id => eq[id] !== undefined ? eq[id] : '0');
     const end = [
+      `"${(r.ubicacion||'').replace(/"/g,'""')}"`,
       `"${r.lat||''}","${r.lng||''}"`, r.foto1||'', r.foto2||'', r.foto3||'',
       `"${(r.observaciones||'').replace(/"/g,'""')}"`
     ];
@@ -1104,17 +1143,11 @@ function updateExportPanel() {
   const allPhotos = records.flatMap(r => r._photos||[]);
   const photoCount = allPhotos.length;
 
-  // Approx size for ZIP estimate
-  let totalB64 = allPhotos.reduce((s,p)=>s+(p.b64?.length||0),0);
-  const csvSize = buildCSV().length;
-  const approxMB = ((totalB64*0.75+csvSize)/1048576).toFixed(1);
-
   const setEl = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
   setEl('ep-name',   projectName || '—');
   setEl('ep-count',  n);
   setEl('ep-coords', `${wc} / ${n}`);
   setEl('ep-photos', `${photoCount} subidas`);
-  setEl('ep-size',   approxMB + ' MB');
 
   // CSV preview
   const csvStr = buildCSV();
@@ -1215,12 +1248,12 @@ function renderR(){
   if(!records.length){el.innerHTML='<p style="color:var(--muted);text-align:center;margin-top:24px;font-size:13px">Sin registros aún</p>';return;}
   el.innerHTML=[...records].reverse().map(r=>`
     <div class="ri">
-      <div class="ri-id">${r.uid}</div>
-      <div class="ri-meta">Poste ${r.n_poste||'—'} · ${r.material||'—'} · <span style="color:${r.estado==='Bueno'?'var(--green)':r.estado==='Malo'?'var(--red)':'var(--accent)'}">${r.estado||'—'}</span></div>
+      <div class="ri-id">${escHtml(r.uid)}</div>
+      <div class="ri-meta">Poste ${escHtml(r.n_poste||'—')} · ${escHtml(r.material||'—')} · <span style="color:${r.estado==='Bueno'?'var(--green)':r.estado==='Malo'?'var(--red)':'var(--accent)'}">${escHtml(r.estado||'—')}</span></div>
       <div class="ri-meta" style="font-size:11px;margin-top:2px">
         ${r.lat?`📍 ${parseFloat(r.lat).toFixed(5)}, ${parseFloat(r.lng).toFixed(5)}`:'📍 Sin coord'}
         · ${[r.foto1,r.foto2,r.foto3].filter(Boolean).length} fotos
-        · ${r.fecha}
+        · ${escHtml(r.fecha)}
       </div>
     </div>`).join('');
 }
@@ -1235,6 +1268,7 @@ async function clearAll(){
     showToast('Error al borrar: ' + e.message);
   }
   renderR();
+  closeR();
 }
 
 // ═══════════════════════════════════════════════════
