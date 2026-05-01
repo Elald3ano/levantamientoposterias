@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PosteField v5</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f1117; --surface:#181c27; --card:#1e2333; --border:#2a3045;
+  --accent:#f5a623; --green:#3dd68c; --red:#ff5c5c;
+  --text:#e8eaf2; --muted:#6b7494; --input:#141720;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Condensed',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── HEADER ── */
+header{background:var(--surface);border-bottom:2px solid var(--accent);height:52px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:500}
+.logo{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)}.logo span{color:var(--text)}
+.project-chip{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--card);border:1px solid var(--border);color:var(--green);padding:4px 8px;border-radius:4px;letter-spacing:.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+
+/* ── PROJECT SCREEN ── */
+#project-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px}
+.ps-box{width:100%;max-width:400px}
+.ps-title{font-size:32px;font-weight:800;margin-bottom:4px}
+.ps-sub{font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+.ps-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.ps-input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;padding:13px 14px;outline:none;margin-bottom:10px;letter-spacing:.5px}
+.ps-input:focus{border-color:var(--accent)}
+.ps-input::placeholder{color:var(--muted);font-weight:400}
+.ps-hint{font-size:12px;color:var(--muted);margin-bottom:24px;font-style:italic}
+.ps-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer}
+.ps-saved{margin-top:20px}
+.ps-saved-title{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.ps-prev-item{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:7px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
+.ps-prev-item:hover{border-color:var(--accent)}
+.ps-prev-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)}
+.ps-prev-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.ps-prev-count{font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border)}
+.tab{flex:1;padding:11px 4px 9px;border:none;background:transparent;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tab .tn{width:20px;height:20px;border-radius:50%;border:2px solid currentColor;font-size:10px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab.done{color:var(--green)}.tab.done .tn{background:var(--green);border-color:var(--green);color:var(--bg)}
+
+/* ── PANELS ── */
+.panel{display:none;padding:16px;max-width:660px;margin:0 auto}.panel.active{display:block}
+
+/* ── FIELDS ── */
+.sl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin:18px 0 10px;border-left:3px solid var(--accent);padding-left:8px}.sl:first-child{margin-top:0}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fg.full{grid-template-columns:1fr}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.f input,.f select,.f textarea{background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;padding:9px 11px;outline:none;transition:border-color .2s;width:100%}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--accent)}
+.f select option{background:var(--card)}.f textarea{resize:vertical;min-height:60px}
+
+/* ── ESTADO ── */
+.rg{display:flex;gap:8px;flex-wrap:wrap}
+.ro{display:none}
+.rl{padding:8px 12px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.ro:checked+.rl{border-color:var(--accent);background:rgba(245,166,35,.15);color:var(--accent)}
+.ro[value="Bueno"]:checked+.rl{border-color:var(--green);background:rgba(61,214,140,.12);color:var(--green)}
+.ro[value="Malo"]:checked+.rl{border-color:var(--red);background:rgba(255,92,92,.12);color:var(--red)}
+
+/* ── COORDENADA ── */
+.coord-block{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:8px}
+.gps-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s}
+.gps-btn.ok{background:var(--green)}.gps-btn.loading{background:var(--border);color:var(--muted);cursor:wait}
+.gps-acc{font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center;margin-top:7px;min-height:15px;color:var(--muted)}
+.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.map-open-btn{width:100%;margin-top:8px;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.map-open-btn:hover{border-color:var(--green);color:var(--green)}
+
+/* ── MAPA MODAL ── */
+.map-modal{display:none;position:fixed;inset:0;z-index:3000;flex-direction:column}
+.map-modal.open{display:flex}
+.mm-head{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.mm-head h3{font-size:15px;font-weight:800}.mm-head p{font-size:11px;color:var(--muted)}
+#mmap{flex:1;width:100%;min-height:0}
+.mm-foot{background:var(--surface);border-top:1px solid var(--border);padding:9px 14px;display:flex;gap:10px;flex-shrink:0}
+.crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000;pointer-events:none}
+.chr{width:36px;height:36px;border:2px solid var(--accent);border-radius:50%;background:rgba(245,166,35,.12);animation:pulse 2s infinite;position:relative}
+.chr::before{content:'';position:absolute;background:var(--accent);width:1px;height:10px;top:-12px;left:50%;transform:translateX(-50%)}
+.chr::after{content:'';position:absolute;background:var(--accent);height:1px;width:10px;right:-12px;top:50%;transform:translateY(-50%)}
+.chr-dot{width:5px;height:5px;background:var(--accent);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+.chr-shadow{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:10px solid var(--accent)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.4)}50%{box-shadow:0 0 0 8px rgba(245,166,35,0)}}
+.coord-live{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(15,17,23,.92);border:1px solid var(--border);backdrop-filter:blur(6px);border-radius:6px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);z-index:1000;pointer-events:none;white-space:nowrap}
+
+/* ── FOTOS ── */
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.foto-slot{aspect-ratio:3/4;background:var(--input);border:2px dashed var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s}
+.foto-slot:hover{border-color:var(--accent)}.foto-slot.done{border-style:solid;border-color:var(--green)}
+.foto-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.foto-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.8) 35%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:7px 4px}
+.foto-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.8);text-align:center;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1px}
+.foto-fn{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--green);text-align:center;word-break:break-all}
+.foto-icon{font-size:26px;opacity:.3;margin-bottom:4px}.foto-slot.done .foto-icon{display:none}
+.foto-del{position:absolute;top:5px;right:5px;background:var(--red);border:none;border-radius:4px;color:white;font-size:11px;width:20px;height:20px;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:10}
+.foto-slot.done .foto-del{display:flex}
+.fi{display:none}
+.info-box{background:var(--card);border-left:3px solid var(--green);border-radius:6px;padding:11px 13px;font-size:13px;color:var(--muted);line-height:1.6;margin-top:14px}
+
+/* ── EXPORT PANEL ── */
+.export-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.ec-head{padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.ec-body{padding:12px 14px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.stat-row:last-child{margin-bottom:0}
+.stat-lbl{font-size:13px;color:var(--muted)}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text)}
+.stat-val.ok{color:var(--green)}.stat-val.warn{color:var(--accent)}
+
+.file-preview{display:flex;flex-direction:column;gap:4px;padding:10px 14px}
+.fp-item{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.fp-item.ready{color:var(--green)}.fp-item .fi-icon{font-size:13px}
+
+.zip-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--green),#2ab577);border:none;border-radius:10px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;margin-top:16px}
+.zip-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.zip-btn:disabled{background:var(--border);color:var(--muted);cursor:wait;transform:none}
+.csv-only-btn{width:100%;padding:11px;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.csv-only-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.csv-preview{background:var(--input);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green);overflow-x:auto;white-space:pre;max-height:140px;overflow-y:auto;margin-top:10px}
+
+
+
+/* ── DRIVE STATUS ── */
+.drive-chip{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--muted);transition:all .3s}
+.drive-chip.connected{border-color:var(--green);color:var(--green)}
+.drive-chip.syncing{border-color:var(--accent);color:var(--accent)}
+.drive-chip.error{border-color:var(--red);color:var(--red)}
+.drive-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.drive-login-btn{width:100%;padding:14px;background:white;border:none;border-radius:8px;color:#1f1f1f;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;transition:filter .15s}
+.drive-login-btn:hover{filter:brightness(.95)}
+.drive-login-btn svg{flex-shrink:0}
+.drive-skip{width:100%;padding:11px;background:transparent;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px}
+.drive-status-row{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.drive-status-row .ds-icon{font-size:20px}
+.drive-status-row .ds-text{flex:1}
+.drive-status-row .ds-title{font-size:13px;font-weight:700;color:var(--text)}
+.drive-status-row .ds-sub{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.upload-progress{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.upload-progress-bar{height:100%;background:var(--green);border-radius:2px;transition:width .4s;width:0%}
+
+/* ── DYNAMIC FIELDS ── */
+.dyn-groups { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+.dyn-group-label { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:7px; }
+.chip-row { display:flex; flex-wrap:wrap; gap:7px; }
+.chip {
+  padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--input); color: var(--muted); font-family:'Barlow Condensed',sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: .5px; cursor: pointer;
+  transition: all .15s; user-select: none; white-space: nowrap;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.active { background: rgba(61,214,140,.12); border-color: var(--green); color: var(--green); }
+.dyn-field {
+  display: none; margin-top: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px;
+  animation: slideDown .2s ease;
+}
+.dyn-field.open { display: block; }
+@keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+.dyn-field-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.dyn-field-header span { font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--green); text-transform:uppercase; }
+.dyn-field-header button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:0 4px; }
+.dyn-qty { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
+.dyn-qty .f label { color: var(--muted); font-size:10px; }
+
+/* ── RECORDS SIDEBAR ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1999;display:none}
+.overlay.open{display:block}
+.rpanel{position:fixed;top:0;right:-100%;width:100%;max-width:360px;height:100%;background:var(--surface);border-left:2px solid var(--border);z-index:2000;transition:right .3s;overflow-y:auto;padding:16px}
+.rpanel.open{right:0}
+.ri{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.ri-id{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)}
+.ri-meta{font-size:12px;margin-top:3px;color:var(--muted)}
+
+/* ── BUTTONS ── */
+.btn-row{display:flex;gap:10px;margin-top:18px;padding-bottom:30px}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.btn-p{background:var(--accent);color:var(--bg)}.btn-p:hover{filter:brightness(1.1)}
+.btn-s{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.btn-g{background:var(--green);color:var(--bg)}.btn-g:hover{filter:brightness(1.05)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:var(--bg);padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;letter-spacing:1px;z-index:9999;transition:transform .3s;text-align:center;max-width:90vw}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* MAP TILES DARK */
+.leaflet-container{background:#0d1117!important}
+#mmap .leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border-color:var(--border)!important}
+
+@media(max-width:480px){.fg{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ PROJECT SETUP SCREEN ══════════════════════════════════ -->
+<div id="project-screen">
+  <div class="ps-box">
+    <div class="ps-title">Poste<span style="color:var(--accent)">Field</span></div>
+    <div class="ps-sub">Levantamiento de postes en campo.<br>Primero, define el nombre del proyecto.</div>
+
+    <!-- PASO 1: Google Drive -->
+    <div id="ps-drive-step">
+      <div class="ps-label">Conectar con Google Drive</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Las fotos y el CSV se guardarán automáticamente en tu Drive mientras trabajas en campo.</p>
+      <button class="drive-login-btn" onclick="driveLogin()">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.5 0 6.6 1.3 9 3.4l6.7-6.7C35.7 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.8 6C12.3 13 17.7 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.8-2.1 5.2-4.5 6.8l7 5.4c4.1-3.8 6.5-9.4 6.5-16.2z" /><path fill="#FBBC05" d="M10.4 28.7A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6z"/><path fill="#EA4335" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.4-4.6 2.2-8.2 2.2-6.3 0-11.6-4.2-13.6-10l-7.8 6C6.5 42.5 14.6 48 24 48z"/></svg>
+        CONECTAR CON GOOGLE DRIVE
+      </button>
+      <button class="drive-skip" onclick="skipDrive()">↓ Continuar sin Drive (exportar ZIP)</button>
+    </div>
+
+    <!-- PASO 2: Nombre del proyecto (aparece tras login o skip) -->
+    <div id="ps-name-step" style="display:none">
+      <div id="ps-drive-badge" style="display:none;margin-bottom:14px"></div>
+      <div class="ps-label">Nombre del Proyecto</div>
+      <input class="ps-input" id="proj-input" type="text" placeholder="Ej: Levantamiento Los Mangos" maxlength="50" oninput="sanitizeProjInput()">
+      <div class="ps-hint" id="proj-hint">Carpeta: <span id="proj-preview" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+      <button class="ps-btn" onclick="startProject()">▶ INICIAR PROYECTO</button>
+    </div>
+
+    <div class="ps-saved" id="prev-projects-section" style="display:none">
+      <div class="ps-saved-title">Proyectos anteriores en este dispositivo</div>
+      <div id="prev-projects-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ MAIN APP ══════════════════════════════════ -->
+<header>
+  <div class="logo">Poste<span>Field</span> <span style="font-size:10px;opacity:.4;font-weight:400">v5</span></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="drive-chip" id="drive-chip" onclick="showDriveStatus()"><div class="drive-dot"></div><span id="drive-chip-label">SIN DRIVE</span></div>
+    <div class="project-chip" id="project-chip" onclick="promptChangeProject()" title="Toca para cambiar proyecto">📁 —</div>
+    <button onclick="openR()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;cursor:pointer;font-family:'Barlow Condensed';font-size:12px;font-weight:700;letter-spacing:1px">📋</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" onclick="goTo(0)" id="tab0"><span class="tn">1</span>Encuesta</button>
+  <button class="tab" onclick="goTo(1)" id="tab1"><span class="tn">2</span>Ubicación</button>
+  <button class="tab" onclick="goTo(2)" id="tab2"><span class="tn">3</span>Fotos</button>
+  <button class="tab" onclick="goTo(3)" id="tab3"><span class="tn">4</span>Exportar</button>
+</nav>
+
+<!-- JS ERROR BANNER -->
+<div id="js-error-banner" style="display:none;background:var(--red);color:white;padding:10px;font-size:12px;font-family:monospace;z-index:9999;position:fixed;top:52px;left:0;right:0"></div>
+
+<!-- PANEL 1: ENCUESTA -->
+<div class="panel active" id="panel-0">
+
+  <!-- CAMPOS FIJOS -->
+  <div class="sl">Identificación</div>
+  <div class="fg">
+    <div class="f"><label>Nodo (N° Poste)</label><input id="f-num" type="text" placeholder="Ej: 1024-A"></div>
+    <div class="f"><label>Dirección</label><input id="f-dir" type="text" placeholder="Ej: Cra 5 # 12-34"></div>
+  </div>
+
+  <div class="sl">Características Físicas
+    <span style="font-family:'Barlow Condensed';font-size:11px;color:var(--green);font-weight:400;letter-spacing:0;margin-left:8px;text-transform:none">↺ se conservan del poste anterior</span>
+  </div>
+  <div class="fg">
+    <div class="f">
+      <label>Material</label>
+      <select id="f-mat">
+        <option value="">—</option>
+        <option>Concreto</option><option>Madera</option>
+        <option>Metálico</option><option>Fibra de vidrio</option>
+      </select>
+    </div>
+    <div class="f">
+      <label>Altura (m)</label>
+      <select id="f-alt">
+        <option value="">—</option>
+        <option>8</option><option>9</option><option>10</option>
+        <option>11</option><option>12</option><option>13</option><option>14</option>
+      </select>
+    </div>
+    <div class="f">
+      <label>Carga (daN)</label>
+      <select id="f-car">
+        <option value="">—</option>
+        <option>300</option><option>500</option><option>510</option>
+        <option>750</option><option>1050</option>
+      </select>
+    </div>
+    <div class="f">
+      <label>Tensión</label>
+      <select id="f-ten">
+        <option value="">—</option>
+        <option>BT</option><option>MT</option><option>AT</option>
+        <option>MT/BT - Doble circuito</option>
+      </select>
+    </div>
+    <div class="f">
+      <label>Estado del Poste</label>
+      <select id="f-est">
+        <option value="">—</option>
+        <option>Bueno</option><option>Regular</option><option>Malo</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- CAMPOS DINÁMICOS -->
+  <div class="sl" style="margin-top:20px">Equipamiento del Poste
+    <span style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0;margin-left:8px;text-transform:none">— toca lo que tiene este poste</span>
+  </div>
+
+  <div class="dyn-groups" id="dyn-groups"></div>
+
+  <div class="sl">Observaciones</div>
+  <div class="fg full">
+    <div class="f"><textarea id="f-obs" placeholder="Daños visibles, inclinación, acceso difícil, elementos sin identificar..."></textarea></div>
+  </div>
+
+  <div class="btn-row"><button class="btn btn-p" onclick="goTo(1)">SIGUIENTE → UBICACIÓN</button></div>
+</div>
+
+<!-- PANEL 2: COORDENADA -->
+<div class="panel" id="panel-1">
+  <div class="sl">Coordenada GPS</div>
+  <div class="coord-block">
+    <button class="gps-btn" id="gps-btn" onclick="captureGPS()">🎯 CAPTURAR POSICIÓN GPS</button>
+    <div class="gps-acc" id="gps-acc">Párate al pie del poste y presiona el botón</div>
+    <div class="coord-row">
+      <div class="f"><label>Latitud</label><input type="number" id="f-lat" step="0.0000001" placeholder="—"></div>
+      <div class="f"><label>Longitud</label><input type="number" id="f-lng" step="0.0000001" placeholder="—"></div>
+    </div>
+    <button class="map-open-btn" onclick="openMap()">🗺 Afinar en mapa satelital (opcional)</button>
+  </div>
+  <div class="info-box">
+    💡 El GPS del celular da precisión de <strong>3–10 m</strong>, suficiente para postes. Si estás bajo árboles o edificios, espera unos segundos más. Puedes editar lat/lng manualmente o usar el mapa.
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-s" onclick="goTo(0)" style="flex:.5">← VOLVER</button>
+    <button class="btn btn-p" onclick="goTo(2)">SIGUIENTE → FOTOS</button>
+  </div>
+</div>
+
+<!-- PANEL 3: FOTOS -->
+<div class="panel" id="panel-2">
+  <div class="sl">Fotografías del Poste</div>
+  <div class="foto-grid">
+    <div class="foto-slot" id="slot-0" onclick="trigCam(0)">
+      <div class="foto-icon">📷</div>
+      <button class="foto-del" onclick="rmFoto(event,0)">✕</button>
+      <div class="foto-ov"><div class="foto-lbl">Vista General</div><div class="foto-fn" id="fn-0">—</div></div>
+    </div>
+    <div class="foto-slot" id="slot-1" onclick="trigCam(1)">
+      <div class="foto-icon">📷</div>
+      <button class="foto-del" onclick="rmFoto(event,1)">✕</button>
+      <div class="foto-ov"><div class="foto-lbl">Placa / N°</div><div class="foto-fn" id="fn-1">—</div></div>
+    </div>
+    <div class="foto-slot" id="slot-2" onclick="trigCam(2)">
+      <div class="foto-icon">📷</div>
+      <button class="foto-del" onclick="rmFoto(event,2)">✕</button>
+      <div class="foto-ov"><div class="foto-lbl">Detalle Estado</div><div class="foto-fn" id="fn-2">—</div></div>
+    </div>
+  </div>
+  <input type="file" accept="image/*" capture="environment" id="cam-0" class="fi" onchange="handleFoto(event,0)">
+  <input type="file" accept="image/*" capture="environment" id="cam-1" class="fi" onchange="handleFoto(event,1)">
+  <input type="file" accept="image/*" capture="environment" id="cam-2" class="fi" onchange="handleFoto(event,2)">
+  <div class="info-box">
+    <span id="foto-info-text">📁 Las fotos se incluirán en el ZIP del proyecto.</span><br>
+    <span style="color:var(--green);font-family:'JetBrains Mono',monospace;font-size:10px" id="foto-path-preview">proyecto/fotos/POST-XXX_F01.jpg</span>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-s" onclick="goTo(1)" style="flex:.5">← VOLVER</button>
+    <button class="btn btn-p" onclick="saveAndExport()">GUARDAR + VER EXPORTACIÓN →</button>
+  </div>
+</div>
+
+<!-- PANEL 4: EXPORTAR -->
+<div class="panel" id="panel-3">
+  <div class="sl">Estado del Proyecto</div>
+
+  <!-- Drive status -->
+  <div class="drive-status-row" id="drive-status-row">
+    <div class="ds-icon" id="ds-icon">☁️</div>
+    <div class="ds-text">
+      <div class="ds-title" id="ds-title">Sin conexión a Drive</div>
+      <div class="ds-sub" id="ds-sub">Los datos se guardan localmente</div>
+      <div class="upload-progress"><div class="upload-progress-bar" id="upload-bar"></div></div>
+    </div>
+  </div>
+  <!-- Drive connect/retry block -->
+  <div id="drive-connect-block" style="margin-bottom:12px">
+    <button onclick="driveRetry()" id="drive-retry-btn"
+      style="width:100%;padding:12px;background:var(--card);border:1px solid var(--accent);border-radius:8px;
+             color:var(--accent);font-family:'Barlow Condensed';font-size:14px;font-weight:800;
+             letter-spacing:1.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      ☁️ CONECTAR / RECONECTAR DRIVE
+    </button>
+  </div>
+  <!-- Debug log -->
+  <div id="drive-debug" style="display:none;background:var(--input);border:1px solid var(--red);border-radius:6px;
+       padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);
+       margin-bottom:10px;max-height:150px;overflow-y:auto;white-space:pre-wrap"></div>
+
+  <div class="export-card">
+    <div class="ec-head">Resumen</div>
+    <div class="ec-body">
+      <div class="stat-row"><span class="stat-lbl">Proyecto</span><span class="stat-val ok" id="ep-name">—</span></div>
+      <div class="stat-row"><span class="stat-lbl">Postes registrados</span><span class="stat-val" id="ep-count">0</span></div>
+      <div class="stat-row"><span class="stat-lbl">Con coordenada</span><span class="stat-val ok" id="ep-coords">0 / 0</span></div>
+      <div class="stat-row"><span class="stat-lbl">Fotos subidas a Drive</span><span class="stat-val ok" id="ep-photos">—</span></div>
+    </div>
+  </div>
+
+  <div class="sl">Vista previa CSV</div>
+  <div class="csv-preview" id="csv-preview">—</div>
+
+  <button class="zip-btn" id="zip-btn" onclick="exportZIP()">
+    📦 DESCARGAR ZIP LOCAL (respaldo)
+  </button>
+  <button class="csv-only-btn" onclick="downloadCSVOnly()">↓ Solo CSV</button>
+
+  <div class="btn-row" style="margin-top:16px">
+    <button class="btn btn-p" onclick="newRecord()">+ REGISTRAR SIGUIENTE POSTE</button>
+  </div>
+</div>
+
+<!-- MAPA MODAL -->
+<div class="map-modal" id="map-modal">
+  <div class="mm-head">
+    <div><h3>📍 Afinar Ubicación</h3><p>Mueve el mapa • el cursor señala el poste exacto</p></div>
+    <button onclick="closeMap()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px">✕</button>
+  </div>
+  <div style="position:relative;flex:1;min-height:0">
+    <div id="mmap" style="width:100%;height:100%"></div>
+    <div class="crosshair">
+      <div class="chr"><div class="chr-dot"></div></div>
+      <div class="chr-shadow"></div>
+    </div>
+    <div class="coord-live" id="coord-live">—</div>
+  </div>
+  <div class="mm-foot">
+    <button class="btn btn-s" onclick="closeMap()" style="flex:.5">CANCELAR</button>
+    <button class="btn btn-p" onclick="confirmMapCoord()">✓ CONFIRMAR POSICIÓN</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="overlay" id="overlay" onclick="closeR()"></div>
+<div class="rpanel" id="rpanel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h2 style="font-size:18px;font-weight:800">REGISTROS <span id="r-count" style="color:var(--muted);font-size:13px"></span></h2>
+    <button onclick="closeR()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 9px;cursor:pointer">✕</button>
+  </div>
+  <div id="rlist"></div>
+  <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">
+    <button class="btn btn-g" onclick="exportZIP();closeR()">📦 ZIP LOCAL (respaldo)</button>
+    <button class="btn" onclick="clearAll()" style="background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.3);color:var(--red)">🗑 Borrar proyecto</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// Global error catcher — shows errors visibly in field
+window.onerror = function(msg, src, line, col, err) {
+  const el = document.getElementById('js-error-banner');
+  if(el) { el.style.display='block'; el.textContent = `JS Error: ${msg} (line ${line})`; }
+  console.error('JS ERROR:', msg, src, line);
+  return false;
+};
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let projectName = '';
+let projectKey  = '';
+let records     = [];
+let photos      = [null, null, null]; // {name, b64} per foto
+let uid         = '';
+let mapInst     = null, mapReady = false;
+let geoAddress  = ''; // resultado de geocodificación inversa
+let seqNum      = 0;   // consecutivo del registro en el proyecto
+
+// ── GOOGLE DRIVE ──────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = '972903875733-07uf1urlk7rfv578a4a97u7slhm5uhh0.apps.googleusercontent.com';
+const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive';
+const APP_FOLDER_NAME  = 'PosteField';
+let driveToken     = null;  // OAuth access token
+let driveUser      = '';    // user email
+let driveFolders   = { root:null, project:null, fotos:null };
+let driveCSVFileId = null;  // ID of the current project's CSV in Drive
+let drivePhotosUploaded = 0;
+let driveMode      = false; // true = using Drive, false = local only
+let drivePhotoQueue = []; // photos waiting for folders to be ready
+
+// ═══════════════════════════════════════════════════
+// PROJECT SETUP
+// ═══════════════════════════════════════════════════
+function sanitizeProjInput() {
+  const raw  = document.getElementById('proj-input').value;
+  const safe = raw.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ \-_]/g,'').trim();
+  const slug = safe.replace(/\s+/g,'_');
+  document.getElementById('proj-preview').textContent = slug ? slug + '/' : '—';
+}
+
+function startProject(nameOverride) {
+  const raw  = nameOverride || document.getElementById('proj-input').value.trim();
+  if (!raw) { showToast('Ingresa un nombre de proyecto'); return; }
+  projectName = raw;
+  projectKey  = raw.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,'');
+
+  // Load existing records for this project
+  records = JSON.parse(localStorage.getItem(`pf_${projectKey}`) || '[]');
+
+  document.getElementById('project-screen').style.display = 'none';
+  document.getElementById('project-chip').textContent = '📁 ' + projectName.slice(0,20);
+
+  seqNum = records.length + 1;
+  uid = genUID();
+  refreshFilenames();
+  updateExportPanel();
+  buildDynUI();
+  if(driveMode) driveInitFolders(projectKey);
+}
+
+function loadPrevProjects() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('pf_'));
+  const sec  = document.getElementById('prev-projects-section');
+  const list = document.getElementById('prev-projects-list');
+  if (!keys.length) { sec.style.display='none'; return; }
+  sec.style.display = 'block';
+  list.innerHTML = keys.map(k => {
+    const name  = k.replace(/^pf_/,'').replace(/_/g,' ');
+    const recs  = JSON.parse(localStorage.getItem(k)||'[]');
+    return `<div class="ps-prev-item" onclick="startProject('${name}')">
+      <div><div class="ps-prev-name">${name}</div><div class="ps-prev-meta">${recs.length} poste(s) guardado(s)</div></div>
+      <div class="ps-prev-count">${recs.length} ▶</div>
+    </div>`;
+  }).join('');
+}
+loadPrevProjects();
+// Safety net: if buildDynUI was never called or failed, retry after DOM settles
+setTimeout(() => {
+  const el = document.getElementById('dyn-groups');
+  if(el && el.children.length === 0 && typeof DYNAMIC_FIELDS !== 'undefined') {
+    console.log('[Safety] dyn-groups empty, re-running buildDynUI');
+    buildDynUI();
+  }
+}, 500);
+
+function promptChangeProject() {
+  if(confirm('¿Cambiar de proyecto? Se guardará el progreso actual.')) {
+    document.getElementById('proj-input').value = '';
+    document.getElementById('proj-preview').textContent = '—';
+    document.getElementById('project-screen').style.display = 'flex';
+    loadPrevProjects();
+// Safety net: if buildDynUI was never called or failed, retry after DOM settles
+setTimeout(() => {
+  const el = document.getElementById('dyn-groups');
+  if(el && el.children.length === 0 && typeof DYNAMIC_FIELDS !== 'undefined') {
+    console.log('[Safety] dyn-groups empty, re-running buildDynUI');
+    buildDynUI();
+  }
+}, 500);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// UID & FILENAMES
+// ═══════════════════════════════════════════════════
+function genUID() {
+  const d = new Date();
+  const s = d.getFullYear().toString().slice(2) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  return `POST-${s}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+}
+
+function refreshFilenames() {
+  const folder = projectKey || 'proyecto';
+  for(let i=0;i<3;i++) {
+    const el = document.getElementById(`fn-${i}`);
+    if(el) el.textContent = `${uid}_F0${i+1}.jpg`;
+  }
+  const pp = document.getElementById('foto-path-preview');
+  if(pp) pp.textContent = `${folder}/fotos/${uid}_F01.jpg`;
+  const fi = document.getElementById('foto-info-text');
+  if(fi) fi.textContent = driveMode
+    ? '☁️ Las fotos se subirán a Google Drive automáticamente.'
+    : '📁 Las fotos se incluirán en el ZIP del proyecto.';
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function goTo(step) {
+  document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===step));
+  document.querySelectorAll('.tab').forEach((b,i) => {
+    b.classList.remove('active','done');
+    if(i < step) b.classList.add('done');
+    if(i === step) b.classList.add('active');
+  });
+  window.scrollTo(0,0);
+  if(step===3) updateExportPanel();
+}
+
+
+// ═══════════════════════════════════════════════════
+// GOOGLE DRIVE INTEGRATION
+// ═══════════════════════════════════════════════════
+
+function driveLogin() {
+  if(typeof google === 'undefined') {
+    showToast('Cargando Google... intenta de nuevo en 2 segundos');
+    return;
+  }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    prompt: 'consent',
+    callback: async (resp) => {
+      if(resp.error) { showToast('Error al conectar con Google: ' + resp.error); return; }
+      driveToken = resp.access_token;
+      driveMode  = true;
+      // Get user info
+      try {
+        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${driveToken}` }
+        });
+        const u = await r.json();
+        driveUser = u.email || 'Google Drive';
+      } catch(e) { driveUser = 'Google Drive'; }
+
+      // Show name step with badge
+      document.getElementById('ps-drive-step').style.display = 'none';
+      document.getElementById('ps-name-step').style.display  = 'block';
+      const badge = document.getElementById('ps-drive-badge');
+      badge.style.display = 'flex';
+      badge.style.alignItems = 'center';
+      badge.style.gap = '8px';
+      badge.innerHTML = `<span style="color:var(--green);font-size:18px">✓</span>
+        <span style="font-size:12px;color:var(--green);font-family:'JetBrains Mono',monospace">${driveUser}</span>`;
+      setDriveChip('connected', '✓ DRIVE');
+      // If project already active (e.g. resumed session), init folders now
+      if(projectKey) driveInitFolders(projectKey);
+    }
+  });
+  client.requestAccessToken();
+}
+
+function skipDrive() {
+  driveMode = false;
+  document.getElementById('ps-drive-step').style.display = 'none';
+  document.getElementById('ps-name-step').style.display  = 'block';
+  setDriveChip('', 'SIN DRIVE');
+}
+
+function setDriveChip(state, label) {
+  const chip = document.getElementById('drive-chip');
+  chip.className = 'drive-chip' + (state ? ' ' + state : '');
+  document.getElementById('drive-chip-label').textContent = label;
+}
+
+function showDriveStatus() {
+  if(!driveMode) { showToast('Drive no conectado — usando modo local'); return; }
+  showToast(`☁️ ${driveUser} · ${drivePhotosUploaded} fotos subidas`);
+}
+
+// Create a folder in Drive, returns its ID
+async function driveAPICall(url, method, body) {
+  const opts = {
+    method: method || 'GET',
+    headers: { Authorization: `Bearer ${driveToken}` }
+  };
+  if(body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(url, opts);
+  const json = await r.json();
+  if(!r.ok) throw new Error(json.error?.message || `HTTP ${r.status}`);
+  return json;
+}
+
+async function driveFindFolder(name, parentId) {
+  let q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  if(parentId) q += ` and '${parentId}' in parents`;
+  const data = await driveAPICall(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`
+  );
+  return (data.files && data.files.length > 0) ? data.files[0].id : null;
+}
+
+async function driveCreateFolder(name, parentId) {
+  const meta = { name, mimeType:'application/vnd.google-apps.folder' };
+  if(parentId) meta.parents = [parentId];
+  const f = await driveAPICall('https://www.googleapis.com/drive/v3/files', 'POST', meta);
+  return f.id;
+}
+
+async function driveFindOrCreateFolder(name, parentId) {
+  const found = await driveFindFolder(name, parentId);
+  if(found) return found;
+  return await driveCreateFolder(name, parentId);
+}
+
+// Initialize Drive folder structure for the project
+async function driveInitFolders(projKey) {
+  if(!driveMode || !driveToken) return;
+  driveLog('Iniciando conexión con Drive...');
+  updateDriveStatus('syncing', '⏳', 'Conectando con Drive...', projKey);
+  setDriveChip('syncing', '⏳ DRIVE');
+  try {
+    driveLog('Buscando/creando carpeta PosteField...');
+    driveFolders.root = await driveFindOrCreateFolder(APP_FOLDER_NAME, null);
+    driveLog(`PosteField OK (${driveFolders.root})`);
+
+    driveLog(`Buscando/creando carpeta ${projKey}...`);
+    driveFolders.project = await driveFindOrCreateFolder(projKey, driveFolders.root);
+    driveLog(`Proyecto OK (${driveFolders.project})`);
+
+    driveLog('Buscando/creando carpeta fotos...');
+    driveFolders.fotos = await driveFindOrCreateFolder('fotos', driveFolders.project);
+    driveLog(`Fotos OK (${driveFolders.fotos})`);
+
+    // Find existing CSV
+    const csvName = `${projKey}_datos.csv`;
+    const existingCSV = await driveFindFolder(csvName, driveFolders.project);
+    driveCSVFileId = existingCSV;
+    driveLog(existingCSV ? `CSV existente: ${existingCSV}` : 'CSV nuevo (se creará al guardar)');
+
+    updateDriveStatus('connected', '✓', `Drive listo · ${driveUser}`, `Mi Drive/PosteField/${projKey}/`);
+    const cb = document.getElementById('drive-connect-block');
+    if(cb) cb.style.display = 'none';
+    setDriveChip('connected', '✓ DRIVE');
+    showToast('☁️ Drive conectado y listo');
+    // Flush any photos that were taken before folders were ready
+    if(drivePhotoQueue.length > 0) {
+      driveLog(`Subiendo ${drivePhotoQueue.length} foto(s) en cola...`);
+      for(const {b64, filename} of drivePhotoQueue) {
+        await driveUploadPhoto(b64, filename);
+      }
+      drivePhotoQueue = [];
+      setDriveChip('connected', `✓ ${drivePhotosUploaded} FOTOS`);
+    }
+  } catch(e) {
+    driveLog('ERROR: ' + e.message, true);
+    driveLog('Stack: ' + (e.stack||'n/a'), true);
+    updateDriveStatus('error', '✗', 'Error: ' + e.message, 'Toca ↺ para reintentar');
+    setDriveChip('error', '✗ DRIVE');
+    showToast('Error Drive — toca CONECTAR para reintentar');
+    const cb = document.getElementById('drive-connect-block');
+    if(cb) { cb.style.display='block'; document.getElementById('drive-retry-btn').textContent='↺ REINTENTAR CONEXIÓN DRIVE'; }
+  }
+}
+
+// Visible debug log
+const _driveLogs = [];
+function driveLog(msg, isError) {
+  console.log('[Drive]', msg);
+  _driveLogs.push(msg);
+  const sub = document.getElementById('ds-sub');
+  if(sub) sub.textContent = msg;
+  if(isError) {
+    const dbg = document.getElementById('drive-debug');
+    if(dbg) {
+      dbg.style.display = 'block';
+      dbg.textContent = _driveLogs.join('\n');
+    }
+  }
+}
+
+function driveRetry() {
+  const dbg = document.getElementById('drive-debug');
+  if(dbg) { dbg.style.display='none'; dbg.textContent=''; }
+  _driveLogs.length = 0;
+
+  if(!projectKey) { showToast('Primero inicia un proyecto'); return; }
+
+  if(!driveToken) {
+    // No token — trigger login then init
+    driveLog('Sin token — solicitando login...');
+    if(typeof google === 'undefined') { showToast('Cargando Google SDK...'); return; }
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      prompt: 'consent',
+      callback: async (resp) => {
+        if(resp.error) { driveLog('Login error: ' + resp.error, true); return; }
+        driveToken = resp.access_token;
+        driveMode  = true;
+        setDriveChip('connected', '✓ DRIVE');
+        driveInitFolders(projectKey);
+      }
+    });
+    client.requestAccessToken();
+    return;
+  }
+
+  // Have token — just init folders
+  driveMode = true;
+  driveInitFolders(projectKey);
+}
+
+// Upload a photo blob to Drive fotos/ folder
+async function driveUploadPhoto(b64, filename) {
+  if(!driveMode || !driveToken) return;
+  if(!driveFolders.fotos) {
+    // Folders not ready yet — queue for later
+    drivePhotoQueue.push({b64, filename});
+    driveLog(`Foto ${filename} en cola (esperando carpetas...)`);
+    return;
+  }
+  const binary = atob(b64.split(',')[1]);
+  const bytes  = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  const blob = new Blob([bytes], {type:'image/jpeg'});
+
+  const meta = JSON.stringify({ name:filename, parents:[driveFolders.fotos] });
+  const form = new FormData();
+  form.append('metadata', new Blob([meta], {type:'application/json'}));
+  form.append('file', blob);
+
+  await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method:'POST',
+    headers:{ Authorization:`Bearer ${driveToken}` },
+    body: form
+  });
+  drivePhotosUploaded++;
+}
+
+// Upload or update CSV in Drive
+async function driveUploadCSV() {
+  if(!driveMode || !driveToken || !driveFolders.project) return;
+  const csvName = `${projectKey}_datos.csv`;
+  const content = '﻿' + buildCSV();
+  const blob    = new Blob([content], {type:'text/csv'});
+
+  if(driveCSVFileId) {
+    // Update existing file
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveCSVFileId}?uploadType=media`, {
+      method:'PATCH',
+      headers:{ Authorization:`Bearer ${driveToken}`, 'Content-Type':'text/csv' },
+      body: blob
+    });
+  } else {
+    // Create new file
+    const meta = JSON.stringify({ name:csvName, parents:[driveFolders.project] });
+    const form  = new FormData();
+    form.append('metadata', new Blob([meta], {type:'application/json'}));
+    form.append('file', blob);
+    const r    = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method:'POST',
+      headers:{ Authorization:`Bearer ${driveToken}` },
+      body: form
+    });
+    const f = await r.json();
+    driveCSVFileId = f.id;
+  }
+}
+
+function updateDriveStatus(state, icon, title, sub) {
+  document.getElementById('ds-icon').textContent  = icon;
+  document.getElementById('ds-title').textContent = title;
+  document.getElementById('ds-sub').textContent   = sub;
+  const row = document.getElementById('drive-status-row');
+  if(row) {
+    row.style.borderColor = state==='connected' ? 'var(--green)' :
+                            state==='syncing'   ? 'var(--accent)' :
+                            state==='error'     ? 'var(--red)'    : 'var(--border)';
+  }
+}
+
+function setUploadProgress(pct) {
+  const bar = document.getElementById('upload-bar');
+  if(bar) bar.style.width = pct + '%';
+}
+
+
+// ═══════════════════════════════════════════════════
+// GPS
+// ═══════════════════════════════════════════════════
+function captureGPS() {
+  if(!navigator.geolocation) { showToast('GPS no disponible'); return; }
+  const btn = document.getElementById('gps-btn');
+  const acc = document.getElementById('gps-acc');
+  btn.className='gps-btn loading'; btn.textContent='⏳ Buscando señal GPS...';
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat  = pos.coords.latitude.toFixed(7);
+    const lng  = pos.coords.longitude.toFixed(7);
+    const prec = pos.coords.accuracy.toFixed(1);
+    document.getElementById('f-lat').value = lat;
+    document.getElementById('f-lng').value = lng;
+    btn.className='gps-btn ok'; btn.textContent=`✓ GPS ±${prec}m CAPTURADO`;
+    acc.textContent=`Precisión: ±${prec} m — ${new Date().toLocaleTimeString()}`;
+    acc.style.color = prec<=10 ? 'var(--green)' : 'var(--accent)';
+    showToast(`📍 ±${prec}m — consultando ubicación...`);
+    setTimeout(()=>{ btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS'; },5000);
+
+    // Geocodificación inversa con Nominatim (OSM) — sin API key
+    geoAddress = '';
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`)
+      .then(r => r.json())
+      .then(data => {
+        const a = data.address || {};
+        const partes = [
+          a.neighbourhood || a.suburb || a.quarter || a.hamlet || '',
+          a.city || a.town || a.village || a.county || '',
+          a.state || ''
+        ].filter(Boolean);
+        geoAddress = partes.join(', ');
+        acc.textContent = `±${prec}m · ${geoAddress}`;
+        showToast(`📍 ${geoAddress}`);
+      })
+      .catch(() => { geoAddress = ''; });
+  }, () => {
+    btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
+    acc.textContent='No se obtuvo GPS. Ingresa la coordenada manualmente.';
+    acc.style.color='var(--red)';
+    showToast('Error GPS — intenta al aire libre o ingresa manual');
+  }, { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
+}
+
+// ═══════════════════════════════════════════════════
+// MAPA MODAL — Google Satellite
+// ═══════════════════════════════════════════════════
+function openMap() {
+  document.getElementById('map-modal').classList.add('open');
+  if(!mapReady) {
+    const lat0 = parseFloat(document.getElementById('f-lat').value) || 4.6;
+    const lng0 = parseFloat(document.getElementById('f-lng').value) || -74.1;
+    mapInst = L.map('mmap',{zoomControl:true,attributionControl:false}).setView([lat0,lng0],18);
+
+    // Google Hybrid (satélite + etiquetas) — mejor resolución en Latinoamérica
+    const gHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      maxZoom:21, attribution:'© Google',
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    });
+    // OSM como capa de respaldo
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom:19, attribution:'© OpenStreetMap'
+    });
+    // Intentar Google, detectar si falla y cambiar a OSM
+    gHybrid.addTo(mapInst);
+    gHybrid.on('tileerror', () => {
+      if(mapInst.hasLayer(gHybrid)) {
+        mapInst.removeLayer(gHybrid);
+        osm.addTo(mapInst);
+        showToast('🗺 Usando mapa OSM (Google no disponible)');
+      }
+    });
+    L.control.layers({'🛰+🗺 Google Híbrido': gHybrid, '🗺 Calles (OSM)': osm},{},{position:'topright'}).addTo(mapInst);
+
+    mapInst.on('move',()=>{
+      const c = mapInst.getCenter();
+      document.getElementById('coord-live').textContent=`${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
+    });
+
+    // Auto-centrar en GPS si no hay coord todavía
+    if(!document.getElementById('f-lat').value && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(p => mapInst.setView([p.coords.latitude,p.coords.longitude],19));
+    }
+    mapReady = true;
+  }
+  setTimeout(()=> mapInst.invalidateSize(), 120);
+}
+function closeMap() { document.getElementById('map-modal').classList.remove('open'); }
+function confirmMapCoord() {
+  if(!mapInst) return;
+  const c   = mapInst.getCenter();
+  const lat = c.lat.toFixed(7);
+  const lng = c.lng.toFixed(7);
+  document.getElementById('f-lat').value = lat;
+  document.getElementById('f-lng').value = lng;
+  document.getElementById('gps-acc').textContent = `Coordenada del mapa — consultando ubicación...`;
+  document.getElementById('gps-acc').style.color = 'var(--green)';
+  closeMap();
+  showToast('✓ Coordenada del mapa aplicada');
+
+  // Geocodificación inversa — igual que en captureGPS
+  geoAddress = '';
+  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`)
+    .then(r => r.json())
+    .then(data => {
+      const a = data.address || {};
+      const partes = [
+        a.neighbourhood || a.suburb || a.quarter || a.hamlet || '',
+        a.city || a.town || a.village || a.county || '',
+        a.state || ''
+      ].filter(Boolean);
+      geoAddress = partes.join(', ');
+      document.getElementById('gps-acc').textContent = `Mapa · ${geoAddress}`;
+      showToast(`📍 ${geoAddress}`);
+    })
+    .catch(() => {
+      geoAddress = '';
+      document.getElementById('gps-acc').textContent = `Coordenada del mapa: ${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}`;
+    });
+}
+
+// ═══════════════════════════════════════════════════
+// FOTOS
+// ═══════════════════════════════════════════════════
+function trigCam(i) { document.getElementById(`cam-${i}`).click(); }
+
+function handleFoto(e,i) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const name = `${uid}_F0${i+1}.jpg`;
+    const img  = new Image();
+    img.onload = () => {
+      // ── 1. Escalar a máx 1600px ancho ──────────────────────
+      const maxW = 1600;
+      let w=img.width, h=img.height;
+      if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+
+      // ── 2. Recoger datos para el sello ─────────────────────
+      const lat   = document.getElementById('f-lat').value  || 'Sin GPS';
+      const lng   = document.getElementById('f-lng').value  || 'Sin GPS';
+      const nPoste= document.getElementById('f-num').value  || '—';
+      const now   = new Date();
+      const fecha = now.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+      const hora  = now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      const fotoLabel = ['Vista General','Placa / N°','Detalle Estado'][i];
+
+      // ── 3. Dimensiones del sello ───────────────────────────
+      // Escala basada en ancho: 1600px → scale=1.0
+      const scale  = w / 1100;
+      const pad    = Math.round(20*scale);
+      const lh     = Math.round(36*scale);   // line height más generoso
+      const fCoord = Math.round(28*scale);   // coordenadas — protagonistas
+      const fMain  = Math.round(23*scale);   // texto normal
+      const fSub   = Math.round(19*scale);   // secundario
+      const fTiny  = Math.round(16*scale);   // detalles
+
+      const hasGeo = geoAddress && geoAddress.length > 0;
+      const nLines = hasGeo ? 7 : 6;
+      const boxH   = lh * nLines + pad * 3.2;
+
+      // Flotar el sello: 3% del alto desde el borde
+      const marginBottom = Math.round(h * 0.03);
+      const boxY   = h - boxH - marginBottom;
+
+      // ── 4. Tarjeta flotante con márgenes laterales ─────────
+      const margin  = Math.round(w * 0.035);   // 3.5% del ancho a cada lado
+      const radius  = Math.round(14 * scale);  // esquinas redondeadas
+      const cardX   = margin;
+      const cardW   = w - margin * 2;
+      const barH    = Math.round(6 * scale);
+
+      // Sombra suave detrás de la tarjeta
+      ctx.shadowColor   = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur    = Math.round(18 * scale);
+      ctx.shadowOffsetY = Math.round(4 * scale);
+
+      // Fondo de la tarjeta con esquinas redondeadas
+      ctx.fillStyle = 'rgba(10,12,20,0.85)';
+      ctx.beginPath();
+      ctx.roundRect(cardX, boxY, cardW, boxH, radius);
+      ctx.fill();
+
+      // Quitar sombra para los demás elementos
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur  = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Barra naranja superior (respeta el radio de esquina)
+      ctx.fillStyle = '#f5a623';
+      ctx.beginPath();
+      ctx.roundRect(cardX, boxY, cardW, barH, [radius, radius, 0, 0]);
+      ctx.fill();
+
+      // Borde naranja sutil alrededor
+      ctx.strokeStyle = 'rgba(245,166,35,0.35)';
+      ctx.lineWidth   = Math.round(1.5 * scale);
+      ctx.beginPath();
+      ctx.roundRect(cardX, boxY, cardW, boxH, radius);
+      ctx.stroke();
+
+      // ── 5. Textos ──────────────────────────────────────────
+      const innerPad = Math.round(pad * 1.4);  // padding interno generoso
+      const x1 = cardX + innerPad;
+      const x2 = cardX + cardW * 0.50;
+      let   y  = boxY + barH + innerPad + lh * 0.85;
+
+      // ── COORDENADAS — LAT | LNG en la misma línea ──────────
+      ctx.font      = `bold ${fCoord}px monospace`;
+      ctx.fillStyle = '#3dd68c';
+      ctx.fillText(`LAT: ${lat}`, x1, y);
+      ctx.fillText(`LNG: ${lng}`, x2, y);
+      y += lh * 0.55;
+
+      // Separador — en el espacio vacío entre coords y lo siguiente
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth   = Math.round(1.5*scale);
+      ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(cardX + cardW - innerPad, y); ctx.stroke();
+      y += lh * 0.65;
+
+      // ── UBICACIÓN ──────────────────────────────────────────
+      if(hasGeo) {
+        ctx.font      = `bold ${fMain}px monospace`;
+        ctx.fillStyle = '#f5a623';
+        ctx.fillText(`📍 ${geoAddress}`, x1, y);
+        y += lh;
+      }
+
+      // ── FECHA Y HORA ───────────────────────────────────────
+      ctx.font      = `${fMain}px monospace`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`📅 ${fecha}   🕐 ${hora}`, x1, y);
+      y += lh;
+
+      // ── POSTE Y PROYECTO ───────────────────────────────────
+      ctx.font      = `bold ${fMain}px monospace`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`Poste: ${nPoste}`, x1, y);
+      ctx.font      = `${fSub}px monospace`;
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillText(`Proyecto: ${projectName}`, x2, y);
+      y += lh;
+
+      // ── ID, ETIQUETA, CONSECUTIVO ──────────────────────────
+      ctx.font      = `${fTiny}px monospace`;
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(`ID: ${uid}`, x1, y);
+      ctx.fillText(`${fotoLabel}  [F0${i+1}/F03]  #${seqNum}`, x2, y);
+      y += lh * 0.95;
+
+      // ── NOMBRE DE ARCHIVO ──────────────────────────────────
+      ctx.font      = `${fTiny}px monospace`;
+      ctx.fillStyle = 'rgba(245,166,35,0.7)';
+      ctx.fillText(name, x1, y);
+
+      // ── 6. Guardar ─────────────────────────────────────────
+      const b64 = canvas.toDataURL('image/jpeg', 0.88);
+      photos[i] = { name, b64 };
+
+      const slot=document.getElementById(`slot-${i}`);
+      let im=slot.querySelector('img');
+      if(!im){im=document.createElement('img');slot.insertBefore(im,slot.firstChild);}
+      im.src=b64; slot.classList.add('done');
+      document.getElementById(`fn-${i}`).textContent=name;
+      showToast(`📸 Foto ${i+1} georreferenciada ✓`);
+      // Upload to Drive in background
+      if(driveMode && driveFolders.fotos) {
+        setDriveChip('syncing', '↑ SUBIENDO');
+        updateDriveStatus('syncing', '↑', `Subiendo ${name}...`, 'Por favor no cierres la app');
+        driveUploadPhoto(b64, name)
+          .then(()=>{
+            setDriveChip('connected', `✓ ${drivePhotosUploaded} FOTOS`);
+            updateDriveStatus('connected', '✓', `${name} guardada en Drive`, `PosteField/${projectKey}/fotos/`);
+            document.getElementById('ep-photos').textContent = drivePhotosUploaded + ' fotos';
+          })
+          .catch(()=>{ setDriveChip('error','ERROR'); showToast('Error al subir foto a Drive'); });
+      }
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function rmFoto(e,i) {
+  e.stopPropagation(); photos[i]=null;
+  const s=document.getElementById(`slot-${i}`);
+  const im=s.querySelector('img'); if(im) im.remove();
+  s.classList.remove('done');
+  document.getElementById(`fn-${i}`).textContent='—';
+  document.getElementById(`cam-${i}`).value='';
+}
+
+// ═══════════════════════════════════════════════════
+// SAVE RECORD
+// ═══════════════════════════════════════════════════
+function saveAndExport() {
+  const now = new Date();
+  const lat = document.getElementById('f-lat').value;
+  const lng = document.getElementById('f-lng').value;
+
+  // Leer campos dinámicos
+  const dynData = {};
+  DYNAMIC_FIELDS.forEach(df => {
+    const el = document.getElementById(`dyn-val-${df.id}`);
+    dynData[df.id] = (el && el.closest('.dyn-field.open')) ? (el.value || '0') : '0';
+  });
+
+  const record = {
+    uid,
+    fecha: now.toLocaleDateString('es-CO'),
+    hora:  now.toLocaleTimeString('es-CO'),
+    n_poste:    document.getElementById('f-num').value,
+    direccion:  document.getElementById('f-dir').value,
+    material:   document.getElementById('f-mat').value,
+    altura:   document.getElementById('f-alt').value,
+    carga:    document.getElementById('f-car').value,
+    tension:    document.getElementById('f-ten').value,
+    estado:     document.getElementById('f-est').value,
+    lat, lng,
+    ...dynData,
+    foto1: photos[0]?.name||'',
+    foto2: photos[1]?.name||'',
+    foto3: photos[2]?.name||'',
+    observaciones: document.getElementById('f-obs').value,
+    _photos: photos.filter(Boolean)
+  };
+
+  record.seq = seqNum; // consecutivo asignado al iniciar el registro
+  records.push(record);
+  // Save without _photos to localStorage (too heavy)
+  const slim = records.map(r => { const {_photos,...rest}=r; return rest; });
+  localStorage.setItem(`pf_${projectKey}`, JSON.stringify(slim));
+
+  showToast(`✓ ${uid} guardado · ${records.length} postes en total`);
+  // Update CSV in Drive
+  if(driveMode && driveFolders.project) {
+    setDriveChip('syncing', '↑ CSV');
+    driveUploadCSV()
+      .then(()=>{
+        setDriveChip('connected', `✓ DRIVE`);
+        updateDriveStatus('connected', '✓',
+          `CSV actualizado · ${records.length} poste(s)`,
+          `PosteField/${projectKey}/${projectKey}_datos.csv`);
+      })
+      .catch(()=>{ setDriveChip('error','ERROR'); showToast('Error al actualizar CSV en Drive'); });
+  }
+  goTo(3);
+}
+
+function newRecord() {
+  // Reset form but keep project
+  ['f-num','f-dir','f-obs'].forEach(id=>document.getElementById(id).value='');
+  // Características físicas NO se resetean — quedan como el poste anterior
+  document.getElementById('f-lat').value='';
+  document.getElementById('f-lng').value='';
+  document.getElementById('gps-acc').textContent='Párate al pie del poste y presiona el botón';
+  document.getElementById('gps-acc').style.color='';
+  // Reset dynamic fields
+  document.querySelectorAll('.chip').forEach(ch=>ch.classList.remove('active'));
+  document.querySelectorAll('.dyn-field').forEach(df=>df.classList.remove('open'));
+  document.querySelectorAll('.dyn-field input').forEach(inp=>inp.value='');
+  photos=[null,null,null];
+  for(let i=0;i<3;i++){
+    const s=document.getElementById(`slot-${i}`);
+    const im=s.querySelector('img'); if(im) im.remove();
+    s.classList.remove('done');
+    document.getElementById(`fn-${i}`).textContent='—';
+    document.getElementById(`cam-${i}`).value='';
+  }
+  const btn=document.getElementById('gps-btn');
+  btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
+  mapReady=false; // recenter map for next pole
+  seqNum = records.length + 1;
+  uid=genUID(); refreshFilenames();
+  goTo(0);
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT PANEL
+// ═══════════════════════════════════════════════════
+// Dynamic field definitions — single source of truth
+const DYNAMIC_FIELDS = [
+  // Infraestructura eléctrica
+  { id:'retenidas',    label:'Retenidas',               group:'Infraestructura Eléctrica' },
+  { id:'bajantes',     label:'Bajantes',                group:'Infraestructura Eléctrica' },
+  { id:'transformador',label:'Transformador',           group:'Infraestructura Eléctrica', options:['TRANSF. 15 KVA','TRANSF. 30 KVA','TRANSF. 45 KVA','TRANSF. 75 KVA','TRANSF. 112,5 KVA','TRANSF. 150 KVA'] },
+  // Cable / Fibra
+  { id:'multpar',      label:'Multpar Telefónico',      group:'Cable / Fibra' },
+  { id:'rg500',        label:'Cable RG 500',            group:'Cable / Fibra' },
+  { id:'rg11',         label:'Cable RG 11',             group:'Cable / Fibra' },
+  { id:'fibra_optica', label:'Fibra Óptica',            group:'Cable / Fibra' },
+  { id:'reservas',     label:'Reservas',                group:'Cable / Fibra' },
+  // Cajas y equipos
+  { id:'caja_tel',     label:'Cajas Telefónicas',       group:'Cajas y Equipos' },
+  { id:'caja_nap',     label:'Cajas NAP',               group:'Cajas y Equipos' },
+  { id:'caja_empalme', label:'Cajas de Empalme (Domos)',group:'Cajas y Equipos' },
+  { id:'fuente_poder', label:'Fuente de Poder',         group:'Cajas y Equipos' },
+  { id:'nodo_optico',  label:'Nodo Óptico',             group:'Cajas y Equipos' },
+  { id:'amplificador', label:'Amplificador',            group:'Cajas y Equipos' },
+  // Proyección
+  { id:'proyectado',   label:'Uso / Elemento Proyectado', group:'Proyección', options:['Apoyo','Caja NAP','Caja Empalme','Caja Empalme y NAP'] },
+];
+
+// Build dynamic chips UI
+function buildDynUI() {
+  const container = document.getElementById('dyn-groups');
+  if(!container) return;
+  const groups = {};
+  DYNAMIC_FIELDS.forEach(df => {
+    if(!groups[df.group]) groups[df.group] = [];
+    groups[df.group].push(df);
+  });
+  container.innerHTML = Object.entries(groups).map(([grp, fields]) => `
+    <div>
+      <div class="dyn-group-label">${grp}</div>
+      <div class="chip-row">
+        ${fields.map(df => `<div class="chip" id="chip-${df.id}" onclick="toggleChip('${df.id}')">${df.label}</div>`).join('')}
+      </div>
+      ${fields.map(df => `
+        <div class="dyn-field" id="dyn-${df.id}">
+          <div class="dyn-field-header">
+            <span>${df.label}</span>
+            <button onclick="toggleChip('${df.id}')" title="Cerrar">✕</button>
+          </div>
+          <div class="dyn-qty">
+            <div class="f">
+              ${df.options
+                ? `<label>Tipo</label>
+                   <select id="dyn-val-${df.id}">
+                     ${df.options.map(o => `<option value="${o}">${o}</option>`).join('')}
+                   </select>`
+                : `<label>Cantidad</label>
+                   <input type="number" id="dyn-val-${df.id}" min="0" value="1" style="max-width:100px">`
+              }
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+  `).join('');
+}
+
+function toggleChip(id) {
+  const chip  = document.getElementById(`chip-${id}`);
+  const field = document.getElementById(`dyn-${id}`);
+  const isOpen = field.classList.contains('open');
+  if(isOpen) {
+    field.classList.remove('open');
+    chip.classList.remove('active');
+    const inp = document.getElementById(`dyn-val-${id}`);
+    if(inp && inp.tagName === 'INPUT') inp.value = '1';
+  } else {
+    field.classList.add('open');
+    chip.classList.add('active');
+    setTimeout(()=>{ const inp=document.getElementById(`dyn-val-${id}`); if(inp) inp.focus(); },150);
+  }
+}
+
+const DYN_IDS = DYNAMIC_FIELDS.map(d => d.id);
+const CSV_BASE = ['SEQ','UID','FECHA','HORA','N_POSTE','DIRECCION','MATERIAL','ALTURA_M','CARGA_DAN','TENSION','ESTADO'];
+const CSV_DYN  = DYN_IDS.map(id => id.toUpperCase());
+const CSV_END  = ['LAT','LNG','FOTO_1','FOTO_2','FOTO_3','OBSERVACIONES'];
+const CSV_COLS = [...CSV_BASE, ...CSV_DYN, ...CSV_END];
+
+function buildCSV() {
+  const lines = [CSV_COLS.join(',')];
+  records.forEach(r => {
+    const base = [
+      r.seq||'', r.uid, r.fecha, r.hora, r.n_poste, r.direccion||'',
+      r.material||'', r.altura||'', r.carga||'', r.tension||'', r.estado||''
+    ];
+    const dyn = DYN_IDS.map(id => r[id] !== undefined ? r[id] : '0');
+    const end = [
+      `"${r.lat||''}","${r.lng||''}"`, r.foto1||'', r.foto2||'', r.foto3||'',
+      `"${(r.observaciones||'').replace(/"/g,'""')}"`
+    ];
+    lines.push([...base, ...dyn, ...end].join(','));
+  });
+  return lines.join('\n');
+}
+
+function updateExportPanel() {
+  const n    = records.length;
+  const wc   = records.filter(r=>r.lat&&r.lng).length;
+  const allPhotos = records.flatMap(r => r._photos||[]);
+  const photoCount = allPhotos.length;
+
+  // Approx size
+  let totalB64 = allPhotos.reduce((s,p)=>s+(p.b64?.length||0),0);
+  const csvSize = buildCSV().length;
+  const approxMB = ((totalB64*0.75+csvSize)/1048576).toFixed(1);
+
+  const setEl = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  setEl('ep-name',   projectName || '—');
+  setEl('ep-count',  n);
+  setEl('ep-coords', `${wc} / ${n}`);
+  setEl('ep-photos', driveMode ? `${drivePhotosUploaded} en Drive` : `${photoCount} en sesión`);
+  setEl('ep-size',   approxMB + ' MB');
+
+  const folder = projectKey;
+  setEl('zip-folder-name', folder+'/');
+  setEl('zip-csv-name',    folder+'_datos.csv');
+
+  const photoList = document.getElementById('zip-photo-list');
+  if(photoList) photoList.innerHTML = allPhotos.length
+    ? allPhotos.map(p=>`<div class="fp-item ready"><span class="fi-icon">🖼</span>${p.name}</div>`).join('')
+    : `<div class="fp-item">(Sin fotos en esta sesión)</div>`;
+
+  // CSV preview
+  const csvStr = buildCSV();
+  const lines  = csvStr.split('\n');
+  document.getElementById('csv-preview').textContent = lines.slice(0,6).join('\n') + (lines.length>6?`\n... +${lines.length-6} filas`:'');
+}
+
+// ═══════════════════════════════════════════════════
+// ZIP EXPORT
+// ═══════════════════════════════════════════════════
+async function exportZIP() {
+  if(!records.length){ showToast('No hay registros para exportar'); return; }
+
+  const btn = document.getElementById('zip-btn');
+  btn.disabled=true; btn.textContent='⏳ Generando ZIP...';
+
+  try {
+    const zip    = new JSZip();
+    const folder = zip.folder(projectKey);
+    const fotos  = folder.folder('fotos');
+
+    // CSV
+    folder.file(`${projectKey}_datos.csv`, '\uFEFF'+buildCSV());
+
+    // Photos from all records that have _photos
+    records.forEach(r => {
+      (r._photos||[]).forEach(p => {
+        if(p?.b64) {
+          const b64data = p.b64.split(',')[1];
+          fotos.file(p.name, b64data, {base64:true});
+        }
+      });
+    });
+
+    const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}}, meta => {
+      btn.textContent = `⏳ Comprimiendo... ${meta.percent.toFixed(0)}%`;
+    });
+
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const today= new Date().toISOString().slice(0,10);
+    a.href=url; a.download=`${projectKey}_${today}.zip`; a.click();
+    URL.revokeObjectURL(url);
+
+    const sizeMB = (blob.size/1048576).toFixed(1);
+    showToast(`📦 ZIP descargado · ${sizeMB} MB`);
+  } catch(err) {
+    showToast('Error al generar ZIP: '+err.message);
+    console.error(err);
+  } finally {
+    btn.disabled=false; btn.textContent='📦 DESCARGAR ZIP DEL PROYECTO';
+  }
+}
+
+function downloadCSVOnly() {
+  if(!records.length){ showToast('No hay registros aún'); return; }
+  const blob = new Blob(['\uFEFF'+buildCSV()],{type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const today= new Date().toISOString().slice(0,10);
+  a.href=url; a.download=`${projectKey}_datos_${today}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  showToast(`↓ CSV descargado · ${records.length} registros`);
+}
+
+// ═══════════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════════
+function openR(){ renderR(); document.getElementById('rpanel').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeR(){ document.getElementById('rpanel').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+function renderR(){
+  document.getElementById('r-count').textContent=`(${records.length})`;
+  const el=document.getElementById('rlist');
+  if(!records.length){el.innerHTML='<p style="color:var(--muted);text-align:center;margin-top:24px;font-size:13px">Sin registros aún</p>';return;}
+  el.innerHTML=[...records].reverse().map(r=>`
+    <div class="ri">
+      <div class="ri-id">${r.uid}</div>
+      <div class="ri-meta">Poste ${r.n_poste||'—'} · ${r.material||'—'} · <span style="color:${r.estado==='Bueno'?'var(--green)':r.estado==='Malo'?'var(--red)':'var(--accent)'}">${r.estado||'—'}</span></div>
+      <div class="ri-meta" style="font-size:11px;margin-top:2px">
+        ${r.lat?`📍 ${parseFloat(r.lat).toFixed(5)}, ${parseFloat(r.lng).toFixed(5)}`:'📍 Sin coord'}
+        · ${[r.foto1,r.foto2,r.foto3].filter(Boolean).length} fotos
+        · ${r.fecha}
+      </div>
+    </div>`).join('');
+}
+
+function clearAll(){
+  if(!confirm(`¿Borrar todos los registros del proyecto "${projectName}"?`))return;
+  records=[]; localStorage.removeItem(`pf_${projectKey}`); renderR();
+  showToast('Proyecto borrado');
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
