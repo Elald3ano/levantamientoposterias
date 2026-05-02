@@ -278,8 +278,9 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
     <div class="f">
       <label>Estado del Poste</label>
       <select id="f-est">
-        <option value="">—</option>
-        <option>Bueno</option><option>Regular</option><option>Malo</option>
+        <option value="Bueno">Bueno</option>
+        <option value="Regular">Regular</option>
+        <option value="Malo">Malo</option>
       </select>
     </div>
   </div>
@@ -349,7 +350,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   </div>
   <div class="btn-row">
     <button class="btn btn-s" onclick="goTo(1)" style="flex:.5">← VOLVER</button>
-    <button class="btn btn-p" onclick="saveAndExport()">GUARDAR + VER EXPORTACIÓN →</button>
+    <button class="btn btn-p" onclick="saveAndExport()">✓ GUARDAR Y SIGUIENTE POSTE</button>
   </div>
 </div>
 
@@ -1202,6 +1203,10 @@ function handleFoto(e,i) {
           showToast('⚠️ Error al subir foto — se guardará localmente');
           throw e;
         });
+      // Auto-encadenar siguiente foto en modo Estricto
+      if (projectMode === 'estricto' && i < 2) {
+        setTimeout(() => trigCam(i + 1), 600);
+      }
     };
     img.src=ev.target.result;
   };
@@ -1282,14 +1287,16 @@ async function saveAndExport() {
     await sbSaveRecord(record);
     records.push(record);
     clearDraft();
-    showToast(`✓ ${uid} guardado en Supabase · ${records.length} postes`);
+    showToast(`✓ ${uid} guardado · ${records.length} postes`);
+    newRecord();
   } catch(e) {
     console.error('Error guardando en Supabase:', e);
-    // Guardar en cola offline para sincronizar después
     saveToOfflineQueue(record);
     records.push(record);
     showToast(`⚠️ Sin conexión — guardado local. Se sincronizará al reconectar.`);
+    newRecord();
   }
+}
 
   goTo(3);
 }
@@ -1318,10 +1325,39 @@ function newRecord() {
   const btn=document.getElementById('gps-btn');
   btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
   if(mapInst) { mapInst.remove(); mapInst = null; }
-  mapReady=false; // recenter map for next pole
+  mapReady=false;
   seqNum = records.length > 0 ? Math.max(...records.map(r => r.seq)) + 1 : 1;
   uid=genUID(); refreshFilenames();
+  // GPS en background: mientras llenas la encuesta ya se está capturando
+  autoCaptureGPS();
   goTo(0);
+}
+
+function autoCaptureGPS() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos => {
+    // Solo actualizar si el usuario no ha puesto coordenada manualmente
+    if (!document.getElementById('f-lat').value) {
+      document.getElementById('f-lat').value = pos.coords.latitude.toFixed(7);
+      document.getElementById('f-lng').value = pos.coords.longitude.toFixed(7);
+      const prec = pos.coords.accuracy.toFixed(1);
+      const acc = document.getElementById('gps-acc');
+      acc.textContent = `Precisión: ±${prec} m (auto)`;
+      acc.style.color = prec <= 20 ? 'var(--green)' : 'var(--accent)';
+      // Geocodificación inversa
+      const lat = pos.coords.latitude.toFixed(7);
+      const lng = pos.coords.longitude.toFixed(7);
+      geoAddress = '';
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`)
+        .then(r => r.json())
+        .then(data => {
+          const a = data.address || {};
+          const partes = [a.neighbourhood||a.suburb||a.quarter||'', a.city||a.town||a.village||'', a.state||''].filter(Boolean);
+          geoAddress = partes.join(', ');
+          acc.textContent = `±${prec}m · ${geoAddress} (auto)`;
+        }).catch(() => {});
+    }
+  }, () => {}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 });
 }
 
 // ═══════════════════════════════════════════════════
