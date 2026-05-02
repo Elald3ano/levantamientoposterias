@@ -277,6 +277,13 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
       <div id="prev-projects-list"></div>
     </div>
     <div id="ps-supabase-status" style="margin-top:12px;text-align:center;font-size:11px"></div>
+    <div id="admin-code-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="ps-saved-title">Cambiar código de administrador</div>
+      <div style="display:flex;gap:8px">
+        <input id="admin-code-input" class="ps-input" style="margin-bottom:0" type="text" placeholder="Nuevo código (mín. 4)" maxlength="8">
+        <button class="admin-btn" onclick="updateAdminCode(document.getElementById('admin-code-input').value)" style="white-space:nowrap">GUARDAR</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -562,9 +569,19 @@ const BUCKET_FOTOS = 'fotos';
 // ═══════════════════════════════════════════════════
 // ACCESO POR CÓDIGO — Admin vs Proyecto
 // ═══════════════════════════════════════════════════
-const ADMIN_CODE = '4839'; // código maestro para administradores
+const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutos
+let ADMIN_CODE = '4839'; // fallback, se actualiza desde Supabase
 
 function initApp() {
+  // Verificar timeout de inactividad
+  const ts = localStorage.getItem('pf_access_ts');
+  if (ts && Date.now() - parseInt(ts) > SESSION_TIMEOUT) {
+    localStorage.removeItem('pf_access_code');
+    localStorage.removeItem('pf_access_ts');
+    accessCode = '';
+  }
+  // Cargar admin code desde Supabase
+  loadAdminCode();
   // Restaurar código guardado
   const saved = localStorage.getItem('pf_access_code');
   if (saved) {
@@ -572,8 +589,33 @@ function initApp() {
     document.getElementById('access-input').value = saved;
     verifyCode();
   }
-  // Mostrar project screen (está visible por defecto)
+  // Mostrar project screen
   document.getElementById('project-screen').style.display = 'flex';
+}
+
+function resetActivityTimer() {
+  if (accessCode) localStorage.setItem('pf_access_ts', Date.now());
+}
+// Escuchar interacción del usuario
+['click','keypress','touchstart','scroll'].forEach(ev =>
+  document.addEventListener(ev, resetActivityTimer, { passive: true })
+);
+
+async function loadAdminCode() {
+  try {
+    const { data } = await SB.from('config').select('value').eq('key', 'admin_code').single();
+    if (data) ADMIN_CODE = data.value;
+  } catch(e) { /* usar fallback '4839' */ }
+}
+
+async function updateAdminCode(newCode) {
+  const code = newCode.trim().toUpperCase();
+  if (!code || code.length < 4) { showToast('El código debe tener mínimo 4 caracteres'); return; }
+  const { error } = await SB.from('config').upsert({ key: 'admin_code', value: code }, { onConflict: 'key' });
+  if (error) { showToast('Error: ' + error.message); return; }
+  ADMIN_CODE = code;
+  showToast('✓ Código admin actualizado');
+  document.getElementById('admin-code-input').value = '';
 }
 
 async function verifyCode() {
@@ -582,12 +624,14 @@ async function verifyCode() {
 
   // ¿Es el código admin?
   if (input === ADMIN_CODE) {
-    isAdmin = true;
-    accessCode = input;
-    localStorage.setItem('pf_access_code', input);
+  isAdmin = true;
+  accessCode = input;
+  localStorage.setItem('pf_access_code', input);
+  localStorage.setItem('pf_access_ts', Date.now());
     document.getElementById('access-section').style.display = 'none';
     document.getElementById('ps-create-section').style.display = 'block';
     document.getElementById('ps-sub').textContent = '🔑 Modo administrador. Crea y gestiona proyectos.';
+    document.getElementById('admin-code-section').style.display = 'block';
     document.getElementById('ps-supabase-status').textContent = '';
     loadPrevProjects();
     return;
@@ -603,6 +647,7 @@ async function verifyCode() {
   isAdmin = false;
   accessCode = input;
   localStorage.setItem('pf_access_code', input);
+  localStorage.setItem('pf_access_ts', Date.now());
   document.getElementById('access-section').style.display = 'none';
   document.getElementById('ps-create-section').style.display = 'none';
   document.getElementById('ps-sub').textContent = '';
@@ -614,8 +659,10 @@ async function verifyCode() {
 
 function clearAccess() {
   localStorage.removeItem('pf_access_code');
+  localStorage.removeItem('pf_access_ts');
   accessCode = '';
   isAdmin = false;
+  document.getElementById('admin-code-section').style.display = 'none';
   document.getElementById('access-section').style.display = 'block';
   document.getElementById('ps-create-section').style.display = 'none';
   document.getElementById('prev-projects-section').style.display = 'none';
