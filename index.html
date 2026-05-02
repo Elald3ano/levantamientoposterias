@@ -468,9 +468,10 @@ let seqNum      = 0;
 let projectMode = 'libre'; // 'libre' | 'estricto'
 
 // ── SUPABASE ──────────────────────────────────────────────────
+// ── SUPABASE ──────────────────────────────────────────────────
 const SUPABASE_URL = 'https://aoduvchuwxuzdstzlxuu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvZHV2Y2h1d3h1emRzdHpseHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTgzMDQsImV4cCI6MjA5MzIzNDMwNH0.4kXaLjnjCpsXWkQoNpzX3OozhxIsZFLQnwddIvyIxco';
-const SB = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SB = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 const BUCKET_FOTOS = 'fotos';
 
 // ═══════════════════════════════════════════════════
@@ -491,6 +492,7 @@ function sanitizeProjInput() {
 
 function updateModeUI() {
   const libre = document.querySelector('input[name="proj-mode"][value="libre"]');
+  if (!libre) return; // DOM no listo aún
   projectMode = libre.checked ? 'libre' : 'estricto';
   document.getElementById('mode-libre-label').style.borderColor = projectMode === 'libre' ? 'var(--green)' : 'var(--border)';
   document.getElementById('mode-estricto-label').style.borderColor = projectMode === 'estricto' ? 'var(--accent)' : 'var(--border)';
@@ -498,7 +500,12 @@ function updateModeUI() {
     ? '🔒 <b>Obligatorio:</b> N° Poste · GPS · 3 fotos &nbsp;|&nbsp; No podrás guardar sin estos datos.'
     : '🆓 <b>Sin restricciones:</b> guarda con los datos que tengas.';
 }
-updateModeUI();
+// Llamar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => updateModeUI());
+} else {
+  updateModeUI();
+}
   const raw  = document.getElementById('proj-input').value;
   const safe = raw.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ \-_]/g,'').trim();
   const slug = safe.replace(/\s+/g,'_');
@@ -520,6 +527,8 @@ async function startProject(nameOverride) {
   }
 
   // Load records from Supabase
+  if (!SB) { showToast('⚠️ Supabase no cargó. Recarga la página.'); records = []; }
+  else {
   const { data, error } = await SB
     .from('registros')
     .select('*')
@@ -542,6 +551,7 @@ async function startProject(nameOverride) {
         })
     }));
   }
+  }
 
   document.getElementById('project-screen').style.display = 'none';
   const modeIcon = projectMode === 'estricto' ? '🔒' : '🆓';
@@ -560,6 +570,7 @@ async function loadPrevProjects() {
   const statusEl = document.getElementById('ps-supabase-status');
   const sec = document.getElementById('prev-projects-section');
   const list = document.getElementById('prev-projects-list');
+  if (!SB) { statusEl.textContent = '⚠️ Cargando Supabase... recarga en unos segundos'; statusEl.style.color='var(--accent)'; return; }
 
   try {
     const { data, error } = await SB
