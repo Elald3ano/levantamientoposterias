@@ -21,7 +21,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .project-chip{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--card);border:1px solid var(--border);color:var(--green);padding:4px 8px;border-radius:4px;letter-spacing:.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 
 /* ── LOGIN SCREEN ── */
-#login-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px}
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:none;align-items:center;justify-content:center;padding:24px}
 .login-box{width:100%;max-width:400px}
 .login-msg{font-size:13px;color:var(--green);text-align:center;margin-top:12px;min-height:20px}
 .login-msg.error{color:var(--red)}
@@ -537,7 +537,16 @@ let geoAddress  = '';
 let seqNum      = 0;
 let projectMode = 'libre';
 let currentUser = null;   // { id, email }
-let userRole    = 'tecnico'; // 'admin' | 'tecnico'
+let userRole    = 'tecnico';
+// Ocultar app hasta que auth decida qué mostrar
+(function hideAppInitially() {
+  const h = document.querySelector('header');
+  const t = document.querySelector('.tabs');
+  const ps = document.getElementById('project-screen');
+  if (h) h.style.display = 'none';
+  if (t) t.style.display = 'none';
+  if (ps) ps.style.display = 'none';
+})();
 
 // ── SUPABASE ──────────────────────────────────────────────────
 // ── SUPABASE ──────────────────────────────────────────────────
@@ -552,39 +561,35 @@ const BUCKET_FOTOS = 'fotos';
 async function initAuth() {
   if (!SB) { showLoginScreen(); return; }
 
-  // Detectar sesión activa (incluye hash token del magic link)
-  try {
-    const { data, error } = await SB.auth.getSession();
-    if (!error && data.session) {
-      currentUser = data.session.user;
+  // Escuchar cambios de sesión — este es el mecanismo PRINCIPAL
+  SB.auth.onAuthStateChange(async (event, session) => {
+    console.log('🔐 Auth event:', event, session?.user?.email || 'no session');
+    if (session) {
+      currentUser = session.user;
       await loadUserRole();
       showProjectScreen();
       updateUserUI();
     } else {
-      showLoginScreen();
-    }
-  } catch(e) {
-    console.warn('getSession error:', e);
-    showLoginScreen();
-  }
-
-  // Escuchar cambios de sesión (login/logout)
-  SB.auth.onAuthStateChange(async (event, session) => {
-    console.log('Auth event:', event, session?.user?.email);
-    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-      if (session) {
-        currentUser = session.user;
-        await loadUserRole();
-        showProjectScreen();
-        updateUserUI();
-      }
-    } else if (event === 'SIGNED_OUT') {
       currentUser = null;
       userRole = 'tecnico';
       showLoginScreen();
       updateUserUI();
     }
   });
+
+  // Respaldo: si getSession encuentra sesión y onAuthStateChange no disparó aún
+  try {
+    const { data } = await SB.auth.getSession();
+    if (data?.session && !currentUser) {
+      console.log('🔐 Sesión detectada por getSession (fallback)');
+      currentUser = data.session.user;
+      await loadUserRole();
+      showProjectScreen();
+      updateUserUI();
+    }
+  } catch(e) {
+    console.warn('getSession falló:', e);
+  }
 }
 initAuth();
 
