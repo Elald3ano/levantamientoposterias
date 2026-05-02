@@ -20,7 +20,33 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .logo{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)}.logo span{color:var(--text)}
 .project-chip{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--card);border:1px solid var(--border);color:var(--green);padding:4px 8px;border-radius:4px;letter-spacing:.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 
-/* ── PROJECT SCREEN ── */
+/* ── LOGIN SCREEN ── */
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-box{width:100%;max-width:400px}
+.login-msg{font-size:13px;color:var(--green);text-align:center;margin-top:12px;min-height:20px}
+.login-msg.error{color:var(--red)}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5}
+.login-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer}
+.login-btn:disabled{background:var(--border);color:var(--muted);cursor:wait}
+
+/* ── USER CHIP ── */
+.user-chip{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--card);border:1px solid var(--border);color:var(--green);padding:4px 8px;border-radius:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-chip.admin{border-color:var(--accent);color:var(--accent)}
+.logout-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:4px 7px;cursor:pointer;font-size:14px;transition:color .15s}
+.logout-btn:hover{color:var(--red)}
+
+/* ── ADMIN ACTIONS ── */
+.admin-bar{display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px;align-items:center;gap:10px}
+.admin-bar.show{display:flex}
+.admin-bar .ab-text{flex:1;font-size:13px;color:var(--text);font-weight:700}
+.admin-btn{background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;letter-spacing:1px}
+.tech-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:3001;display:none;align-items:center;justify-content:center;padding:20px}
+.tech-modal.open{display:flex}
+.tech-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:100%;max-width:380px}
+.tech-list{margin:12px 0;max-height:200px;overflow-y:auto}
+.tech-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.tech-item:last-child{border-bottom:none}
+.tech-remove{color:var(--red);background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px}
 #project-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px}
 .ps-box{width:100%;max-width:400px}
 .ps-title{font-size:32px;font-weight:800;margin-bottom:4px}
@@ -177,33 +203,47 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 </head>
 <body>
 
+<!-- ══════════════════════════════════ LOGIN SCREEN ══════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="ps-title">Poste<span style="color:var(--accent)">Field</span></div>
+    <div class="login-sub">Ingresa tu correo para recibir un link de acceso.<br><span style="font-size:11px">Sin contraseñas. Abre el link desde el celular y entras directo.</span></div>
+    <input id="login-email" class="ps-input" type="email" placeholder="tu@correo.com" onkeydown="if(event.key==='Enter')sendMagicLink()">
+    <button class="login-btn" id="login-btn" onclick="sendMagicLink()">✉ ENVIAR LINK DE ACCESO</button>
+    <div class="login-msg" id="login-msg"></div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════ PROJECT SETUP SCREEN ══════════════════════════════════ -->
 <div id="project-screen">
   <div class="ps-box">
     <div class="ps-title">Poste<span style="color:var(--accent)">Field</span></div>
-    <div class="ps-sub">Levantamiento de postes en campo.<br>Define el nombre del proyecto para empezar.</div>
+    <div class="ps-sub" id="ps-sub"></div>
 
-    <div class="ps-label">Nombre del Proyecto</div>
-    <input class="ps-input" id="proj-input" type="text" placeholder="Ej: Levantamiento Los Mangos" maxlength="50" oninput="sanitizeProjInput()">
-    <div class="ps-hint" id="proj-hint">ID: <span id="proj-preview" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+    <!-- ADMIN: crear proyecto -->
+    <div id="ps-create-section" style="display:none">
+      <div class="ps-label">Nombre del Proyecto</div>
+      <input class="ps-input" id="proj-input" type="text" placeholder="Ej: Levantamiento Los Mangos" maxlength="50" oninput="sanitizeProjInput()">
+      <div class="ps-hint" id="proj-hint">ID: <span id="proj-preview" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
 
-    <div class="ps-label" style="margin-top:16px">Modo de Levantamiento</div>
-    <div style="display:flex;gap:10px;margin-bottom:6px">
-      <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-libre-label">
-        <input type="radio" name="proj-mode" value="libre" checked onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
-        <div><div style="font-weight:700;font-size:14px">Libre</div><div style="font-size:11px;color:var(--muted)">Sin restricciones</div></div>
-      </label>
-      <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-estricto-label">
-        <input type="radio" name="proj-mode" value="estricto" onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
-        <div><div style="font-weight:700;font-size:14px">Estricto</div><div style="font-size:11px;color:var(--muted)">Requiere GPS + 3 fotos</div></div>
-      </label>
+      <div class="ps-label" style="margin-top:16px">Modo de Levantamiento</div>
+      <div style="display:flex;gap:10px;margin-bottom:6px">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-libre-label">
+          <input type="radio" name="proj-mode" value="libre" checked onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
+          <div><div style="font-weight:700;font-size:14px">Libre</div><div style="font-size:11px;color:var(--muted)">Sin restricciones</div></div>
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-estricto-label">
+          <input type="radio" name="proj-mode" value="estricto" onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
+          <div><div style="font-weight:700;font-size:14px">Estricto</div><div style="font-size:11px;color:var(--muted)">Requiere GPS + 3 fotos</div></div>
+        </label>
+      </div>
+      <div id="mode-requirements" style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6"></div>
+
+      <button class="ps-btn" onclick="createProject()">▶ CREAR PROYECTO</button>
     </div>
-    <div id="mode-requirements" style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6"></div>
-
-    <button class="ps-btn" onclick="startProject()">▶ INICIAR PROYECTO</button>
 
     <div class="ps-saved" id="prev-projects-section" style="display:none">
-      <div class="ps-saved-title">Proyectos en Supabase</div>
+      <div class="ps-saved-title" id="prev-projects-title">Proyectos</div>
       <div id="prev-projects-list"></div>
     </div>
     <div id="ps-supabase-status" style="margin-top:12px;text-align:center;font-size:11px"></div>
@@ -214,6 +254,8 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 <header>
   <div class="logo">Poste<span>Field</span> <span style="font-size:10px;opacity:.4;font-weight:400">v5</span></div>
   <div style="display:flex;gap:8px;align-items:center">
+    <span class="user-chip" id="user-chip" style="display:none">—</span>
+    <button class="logout-btn" id="logout-btn" style="display:none" onclick="logout()" title="Cerrar sesión">↩</button>
     <div class="project-chip" id="project-chip" onclick="promptChangeProject()" title="Toca para cambiar proyecto">📁 —</div>
     <button onclick="openR()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;cursor:pointer;font-family:'Barlow Condensed';font-size:12px;font-weight:700;letter-spacing:1px">📋</button>
   </div>
@@ -437,6 +479,22 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- TECH MODAL -->
+<div class="tech-modal" id="tech-modal">
+  <div class="tech-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="font-size:16px;font-weight:800">Gestionar Técnicos</h3>
+      <button onclick="closeTechModal()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="tech-proj-name">—</div>
+    <div id="tech-list" class="tech-list"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="tech-email" type="email" placeholder="correo@tecnico.com" style="flex:1;background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;outline:none">
+      <button class="admin-btn" onclick="addColaborador()">+ AGREGAR</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -477,7 +535,9 @@ let uid         = '';
 let mapInst     = null, mapReady = false;
 let geoAddress  = '';
 let seqNum      = 0;
-let projectMode = 'libre'; // 'libre' | 'estricto'
+let projectMode = 'libre';
+let currentUser = null;   // { id, email }
+let userRole    = 'tecnico'; // 'admin' | 'tecnico'
 
 // ── SUPABASE ──────────────────────────────────────────────────
 // ── SUPABASE ──────────────────────────────────────────────────
@@ -485,6 +545,106 @@ const SUPABASE_URL = 'https://aoduvchuwxuzdstzlxuu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvZHV2Y2h1d3h1emRzdHpseHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTgzMDQsImV4cCI6MjA5MzIzNDMwNH0.4kXaLjnjCpsXWkQoNpzX3OozhxIsZFLQnwddIvyIxco';
 const SB = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 const BUCKET_FOTOS = 'fotos';
+
+// ═══════════════════════════════════════════════════
+// AUTH — Magic Link + Roles
+// ═══════════════════════════════════════════════════
+async function initAuth() {
+  const { data, error } = await SB.auth.getSession();
+  if (!error && data.session) {
+    currentUser = data.session.user;
+    await loadUserRole();
+    showProjectScreen();
+    updateUserUI();
+  } else {
+    showLoginScreen();
+  }
+
+  SB.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      currentUser = session.user;
+      await loadUserRole();
+      showProjectScreen();
+      updateUserUI();
+    } else {
+      currentUser = null;
+      userRole = 'tecnico';
+      showLoginScreen();
+    }
+  });
+}
+initAuth();
+
+async function loadUserRole() {
+  if (!currentUser) return;
+  try {
+    const { data } = await SB.from('perfiles').select('rol').eq('id', currentUser.id).single();
+    userRole = data?.rol || 'tecnico';
+  } catch(e) {
+    // Perfil aún no creado (recién registrado) — esperar un momento y reintentar
+    setTimeout(async () => {
+      try {
+        const { data } = await SB.from('perfiles').select('rol').eq('id', currentUser.id).single();
+        userRole = data?.rol || 'tecnico';
+        updateUserUI();
+        loadPrevProjects();
+      } catch(e2) { userRole = 'tecnico'; }
+    }, 2000);
+  }
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('login-email').value.trim();
+  const msgEl = document.getElementById('login-msg');
+  const btn = document.getElementById('login-btn');
+  if (!email) { msgEl.textContent = 'Ingresa tu correo'; msgEl.className = 'login-msg error'; return; }
+  btn.disabled = true; btn.textContent = '⏳ Enviando...';
+  const { error } = await SB.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+  if (error) {
+    msgEl.textContent = 'Error: ' + error.message;
+    msgEl.className = 'login-msg error';
+  } else {
+    msgEl.textContent = '✓ Link enviado. Revisa tu correo y haz clic en el enlace.';
+    msgEl.className = 'login-msg';
+  }
+  btn.disabled = false; btn.textContent = '✉ ENVIAR LINK DE ACCESO';
+}
+
+async function logout() {
+  stopDraftAutoSave();
+  saveDraft();
+  await SB.auth.signOut();
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('project-screen').style.display = 'none';
+  document.querySelector('header').style.display = 'none';
+  document.querySelector('.tabs').style.display = 'none';
+  document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+}
+
+function showProjectScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('project-screen').style.display = 'flex';
+  document.querySelector('header').style.display = 'flex';
+  document.querySelector('.tabs').style.display = 'flex';
+  loadPrevProjects();
+}
+
+function updateUserUI() {
+  const chip = document.getElementById('user-chip');
+  const logoutBtn = document.getElementById('logout-btn');
+  if (!currentUser) {
+    chip.style.display = 'none';
+    logoutBtn.style.display = 'none';
+    return;
+  }
+  chip.style.display = 'inline';
+  chip.textContent = (userRole === 'admin' ? '🔑 ' : '👤 ') + currentUser.email;
+  chip.className = 'user-chip' + (userRole === 'admin' ? ' admin' : '');
+  logoutBtn.style.display = 'inline';
+}
 
 // ═══════════════════════════════════════════════════
 // PROJECT SETUP
@@ -519,45 +679,62 @@ if (document.readyState === 'loading') {
   updateModeUI();
 }
 
-async function startProject(nameOverride) {
-  const raw = nameOverride || document.getElementById('proj-input').value.trim();
+async function createProject() {
+  const raw = document.getElementById('proj-input').value.trim();
   if (!raw) { showToast('Ingresa un nombre de proyecto'); return; }
   projectName = raw;
   projectKey = raw.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,'');
+  updateModeUI();
+  localStorage.setItem(`pf_mode_${projectKey}`, projectMode);
 
-  // Guardar o cargar el modo del proyecto
-  if (!nameOverride) {
-    updateModeUI(); // leer radio actual
-    localStorage.setItem(`pf_mode_${projectKey}`, projectMode);
-  } else {
-    projectMode = localStorage.getItem(`pf_mode_${projectKey}`) || 'libre';
+  // Registrar como owner en proyecto_colaboradores
+  try {
+    await SB.from('proyecto_colaboradores').upsert({
+      proyecto: projectKey,
+      user_id: currentUser.id,
+      rol: 'owner'
+    }, { onConflict: 'proyecto,user_id' });
+  } catch(e) {
+    showToast('Error al crear proyecto: ' + e.message);
+    return;
   }
 
+  await openProject();
+}
+
+async function startProject(nameOverride) {
+  projectName = nameOverride;
+  projectKey = nameOverride.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,'');
+  projectMode = localStorage.getItem(`pf_mode_${projectKey}`) || 'libre';
+  await openProject();
+}
+
+async function openProject() {
   // Load records from Supabase
   if (!SB) { showToast('⚠️ Supabase no cargó. Recarga la página.'); records = []; }
   else {
-  const { data, error } = await SB
-    .from('registros')
-    .select('*')
-    .eq('proyecto', projectKey)
-    .order('seq', { ascending: true });
+    const { data, error } = await SB
+      .from('registros')
+      .select('*')
+      .eq('proyecto', projectKey)
+      .order('seq', { ascending: true });
 
-  if (error) {
-    showToast('Error al cargar proyecto: ' + error.message);
-    console.error(error);
-    records = [];
-  } else {
-    records = data.map(r => ({
-      ...r,
-      _photos: [r.foto1, r.foto2, r.foto3]
-        .filter(Boolean)
-        .map(name => {
-          const path = `${projectKey}/${name}`;
-          const { data: d } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
-          return { name, url: d?.publicUrl || '' };
-        })
-    }));
-  }
+    if (error) {
+      showToast('Error al cargar proyecto: ' + error.message);
+      console.error(error);
+      records = [];
+    } else {
+      records = data.map(r => ({
+        ...r,
+        _photos: [r.foto1, r.foto2, r.foto3]
+          .filter(Boolean)
+          .map(name => {
+            const path = `${projectKey}/${name}`;
+            const { data: d } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
+            return { name, url: d?.publicUrl || '' };
+          })
+      }));
+    }
   }
 
   document.getElementById('project-screen').style.display = 'none';
@@ -586,33 +763,56 @@ async function loadPrevProjects() {
   const statusEl = document.getElementById('ps-supabase-status');
   const sec = document.getElementById('prev-projects-section');
   const list = document.getElementById('prev-projects-list');
-  if (!SB) { statusEl.textContent = '⚠️ Cargando Supabase... recarga en unos segundos'; statusEl.style.color='var(--accent)'; return; }
+  const title = document.getElementById('prev-projects-title');
+  const createSec = document.getElementById('ps-create-section');
+  const sub = document.getElementById('ps-sub');
+  if (!SB || !currentUser) return;
+
+  // Mostrar sección crear solo para admin
+  if (userRole === 'admin') {
+    createSec.style.display = 'block';
+    sub.textContent = 'Administrador. Crea proyectos y asigna técnicos.';
+  } else {
+    createSec.style.display = 'none';
+    sub.textContent = 'Selecciona un proyecto asignado para empezar.';
+  }
 
   try {
-    const { data, error } = await SB
-      .from('registros')
-      .select('proyecto')
-      .limit(1000);
+    let proyectos = [];
+    let detalles = {}; // proyecto -> { count, isOwner }
+    if (userRole === 'admin') {
+      const { data, error } = await SB.from('registros').select('proyecto').limit(1000);
+      if (error) throw error;
+      proyectos = [...new Set(data.map(r => r.proyecto).filter(Boolean))];
+    } else {
+      const { data, error } = await SB.from('proyecto_colaboradores')
+        .select('proyecto, rol').eq('user_id', currentUser.id);
+      if (error) throw error;
+      proyectos = [...new Set(data.map(r => r.proyecto))];
+      data.forEach(d => { detalles[d.proyecto] = { count: 0, isOwner: d.rol === 'owner' }; });
+    }
 
-    if (error) {
-      statusEl.textContent = '⚠️ Error: ' + error.message;
-      statusEl.style.color = 'var(--red)';
+    if (!proyectos.length) {
       sec.style.display = 'none';
+      statusEl.textContent = userRole === 'admin' ? '☁️ Sin proyectos — crea el primero' : '☁️ Sin proyectos asignados';
+      statusEl.style.color = 'var(--muted)';
       return;
     }
 
-    const proyectos = [...new Set(data.map(r => r.proyecto).filter(Boolean))];
-    if (!proyectos.length) { sec.style.display = 'none'; return; }
-
     sec.style.display = 'block';
-    statusEl.textContent = '☁️ Supabase conectado';
+    title.textContent = userRole === 'admin' ? 'Proyectos' : 'Proyectos asignados';
+    statusEl.textContent = '☁️ ' + currentUser.email;
     statusEl.style.color = 'var(--green)';
 
     list.innerHTML = proyectos.map(p => {
       const safeName = escHtml(p.replace(/_/g, ' '));
+      const isOwner = userRole === 'admin' || (detalles[p] && detalles[p].isOwner);
       return `<div class="ps-prev-item" onclick="startProject('${safeName.replace(/'/g, "\\'")}')">
-        <div><div class="ps-prev-name">${safeName}</div><div class="ps-prev-meta">Proyecto en la nube</div></div>
-        <div class="ps-prev-count">▶</div>
+        <div><div class="ps-prev-name">${safeName}</div><div class="ps-prev-meta">🌐 Proyecto en la nube</div></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${isOwner ? `<button class="admin-btn" style="font-size:10px;padding:4px 8px" onclick="event.stopPropagation();openTechModal('${safeName.replace(/'/g, "\\'")}')">👥</button>` : ''}
+          <div class="ps-prev-count">▶</div>
+        </div>
       </div>`;
     }).join('');
   } catch (e) {
@@ -621,7 +821,6 @@ async function loadPrevProjects() {
     sec.style.display = 'none';
   }
 }
-loadPrevProjects();
 
 function promptChangeProject() {
   if (confirm('¿Cambiar de proyecto? Se guardará el progreso actual.')) {
@@ -1671,6 +1870,8 @@ async function clearAll(){
   try {
     await sbDeleteProject(projectKey);
     records = [];
+    // Limpiar colaboradores también
+    await SB.from('proyecto_colaboradores').delete().eq('proyecto', projectKey);
     localStorage.removeItem(OFFLINE_KEY_PREFIX + projectKey);
     localStorage.removeItem(`pf_mode_${projectKey}`);
     showToast('Proyecto borrado de Supabase');
@@ -1679,6 +1880,56 @@ async function clearAll(){
   }
   renderR();
   closeR();
+}
+
+// ── GESTIÓN DE TÉCNICOS ────────────────────────────────────────
+let techModalProj = '';
+async function openTechModal(projName) {
+  techModalProj = projName.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,'');
+  document.getElementById('tech-proj-name').textContent = 'Proyecto: ' + projName;
+  await renderTechList();
+  document.getElementById('tech-modal').classList.add('open');
+  document.getElementById('tech-email').value = '';
+}
+
+function closeTechModal() {
+  document.getElementById('tech-modal').classList.remove('open');
+}
+
+async function renderTechList() {
+  const list = document.getElementById('tech-list');
+  const { data, error } = await SB.from('proyecto_colaboradores')
+    .select('user_id, rol, perfiles(email)')
+    .eq('proyecto', techModalProj);
+  if (error || !data) { list.innerHTML = '<div style="color:var(--muted);text-align:center">Error al cargar</div>'; return; }
+  list.innerHTML = data.map(d => `
+    <div class="tech-item">
+      <span>${escHtml(d.perfiles?.email || d.user_id)} <span style="color:var(--muted);font-size:11px">(${d.rol})</span></span>
+      ${d.rol !== 'owner' ? `<button class="tech-remove" onclick="removeColaborador('${d.user_id}')">✕</button>` : '<span style="color:var(--accent);font-size:11px">owner</span>'}
+    </div>`).join('');
+}
+
+async function addColaborador() {
+  const email = document.getElementById('tech-email').value.trim();
+  if (!email) return;
+  // Buscar user_id por email en perfiles
+  const { data: perfiles, error: err1 } = await SB.from('perfiles').select('id').eq('email', email).single();
+  if (err1 || !perfiles) { showToast('⚠️ El técnico debe iniciar sesión primero en la app para crear su perfil.'); return; }
+  const { error } = await SB.from('proyecto_colaboradores').upsert({
+    proyecto: techModalProj,
+    user_id: perfiles.id,
+    rol: 'tecnico'
+  }, { onConflict: 'proyecto,user_id' });
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('✓ Técnico agregado');
+  document.getElementById('tech-email').value = '';
+  renderTechList();
+}
+
+async function removeColaborador(userId) {
+  if (!confirm('¿Quitar acceso a este técnico?')) return;
+  await SB.from('proyecto_colaboradores').delete().eq('proyecto', techModalProj).eq('user_id', userId);
+  renderTechList();
 }
 
 // ═══════════════════════════════════════════════════
