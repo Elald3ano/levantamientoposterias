@@ -186,6 +186,20 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
     <div class="ps-label">Nombre del Proyecto</div>
     <input class="ps-input" id="proj-input" type="text" placeholder="Ej: Levantamiento Los Mangos" maxlength="50" oninput="sanitizeProjInput()">
     <div class="ps-hint" id="proj-hint">ID: <span id="proj-preview" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+
+    <div class="ps-label" style="margin-top:16px">Modo de Levantamiento</div>
+    <div style="display:flex;gap:10px;margin-bottom:6px">
+      <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-libre-label">
+        <input type="radio" name="proj-mode" value="libre" checked onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
+        <div><div style="font-weight:700;font-size:14px">Libre</div><div style="font-size:11px;color:var(--muted)">Sin restricciones</div></div>
+      </label>
+      <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-estricto-label">
+        <input type="radio" name="proj-mode" value="estricto" onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
+        <div><div style="font-weight:700;font-size:14px">Estricto</div><div style="font-size:11px;color:var(--muted)">Requiere GPS + 3 fotos</div></div>
+      </label>
+    </div>
+    <div id="mode-requirements" style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6"></div>
+
     <button class="ps-btn" onclick="startProject()">▶ INICIAR PROYECTO</button>
 
     <div class="ps-saved" id="prev-projects-section" style="display:none">
@@ -353,6 +367,16 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
     </div>
   </div>
 
+  <div style="display:none" id="offline-queue-box">
+    <div class="export-card" style="border-color:var(--accent)">
+      <div class="ec-head" style="color:var(--accent)">⏳ Pendientes de sincronizar</div>
+      <div class="ec-body">
+        <div class="stat-row"><span class="stat-lbl">Registros sin subir</span><span class="stat-val warn" id="offline-count">0</span></div>
+        <button onclick="syncOfflineQueue()" style="margin-top:8px;width:100%;padding:10px;background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Barlow Condensed';font-size:14px;font-weight:700;letter-spacing:1.5px;cursor:pointer">↻ SINCRONIZAR AHORA</button>
+      </div>
+    </div>
+  </div>
+
   <div class="sl">Vista previa CSV</div>
   <div class="csv-preview" id="csv-preview">—</div>
 
@@ -441,6 +465,7 @@ let uid         = '';
 let mapInst     = null, mapReady = false;
 let geoAddress  = '';
 let seqNum      = 0;
+let projectMode = 'libre'; // 'libre' | 'estricto'
 
 // ── SUPABASE ──────────────────────────────────────────────────
 const SUPABASE_URL = 'https://aoduvchuwxuzdstzlxuu.supabase.co';
@@ -464,11 +489,35 @@ function sanitizeProjInput() {
   document.getElementById('proj-preview').textContent = slug ? slug + '/' : '—';
 }
 
+function updateModeUI() {
+  const libre = document.querySelector('input[name="proj-mode"][value="libre"]');
+  projectMode = libre.checked ? 'libre' : 'estricto';
+  document.getElementById('mode-libre-label').style.borderColor = projectMode === 'libre' ? 'var(--green)' : 'var(--border)';
+  document.getElementById('mode-estricto-label').style.borderColor = projectMode === 'estricto' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('mode-requirements').innerHTML = projectMode === 'estricto'
+    ? '🔒 <b>Obligatorio:</b> N° Poste · GPS · 3 fotos &nbsp;|&nbsp; No podrás guardar sin estos datos.'
+    : '🆓 <b>Sin restricciones:</b> guarda con los datos que tengas.';
+}
+updateModeUI();
+  const raw  = document.getElementById('proj-input').value;
+  const safe = raw.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ \-_]/g,'').trim();
+  const slug = safe.replace(/\s+/g,'_');
+  document.getElementById('proj-preview').textContent = slug ? slug + '/' : '—';
+}
+
 async function startProject(nameOverride) {
   const raw = nameOverride || document.getElementById('proj-input').value.trim();
   if (!raw) { showToast('Ingresa un nombre de proyecto'); return; }
   projectName = raw;
   projectKey = raw.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,'');
+
+  // Guardar o cargar el modo del proyecto
+  if (!nameOverride) {
+    updateModeUI(); // leer radio actual
+    localStorage.setItem(`pf_mode_${projectKey}`, projectMode);
+  } else {
+    projectMode = localStorage.getItem(`pf_mode_${projectKey}`) || 'libre';
+  }
 
   // Load records from Supabase
   const { data, error } = await SB
@@ -495,13 +544,16 @@ async function startProject(nameOverride) {
   }
 
   document.getElementById('project-screen').style.display = 'none';
-  document.getElementById('project-chip').textContent = '📁 ' + projectName.slice(0, 20);
+  const modeIcon = projectMode === 'estricto' ? '🔒' : '🆓';
+  document.getElementById('project-chip').textContent = modeIcon + ' ' + projectName.slice(0, 18);
 
   seqNum = records.length > 0 ? Math.max(...records.map(r => r.seq)) + 1 : 1;
   uid = genUID();
   refreshFilenames();
   updateExportPanel();
   buildDynUI();
+  // Intentar sincronizar registros pendientes
+  setTimeout(() => syncOfflineQueue(), 1500);
 }
 
 async function loadPrevProjects() {
@@ -645,6 +697,51 @@ async function sbDeleteProject(projKey) {
   }
   // Delete records
   await SB.from('registros').delete().eq('proyecto', projKey);
+}
+
+// ── COLA OFFLINE ────────────────────────────────────────────────
+const OFFLINE_KEY_PREFIX = 'pf_offline_';
+
+function saveToOfflineQueue(record) {
+  const key = OFFLINE_KEY_PREFIX + projectKey;
+  const queue = JSON.parse(localStorage.getItem(key) || '[]');
+  queue.push(record);
+  localStorage.setItem(key, JSON.stringify(queue));
+}
+
+async function syncOfflineQueue() {
+  if (!projectKey) return;
+  const key = OFFLINE_KEY_PREFIX + projectKey;
+  const raw = localStorage.getItem(key);
+  if (!raw) return;
+  const queue = JSON.parse(raw);
+  if (!queue.length) return;
+
+  showToast(`⏳ Sincronizando ${queue.length} registro(s) pendiente(s)...`);
+  const remaining = [];
+  for (const record of queue) {
+    try {
+      await sbSaveRecord(record);
+    } catch(e) {
+      remaining.push(record);
+    }
+  }
+  if (remaining.length) {
+    localStorage.setItem(key, JSON.stringify(remaining));
+    if (remaining.length < queue.length) {
+      showToast(`☁️ ${queue.length - remaining.length} sincronizado(s) · ${remaining.length} pendiente(s)`);
+    }
+  } else {
+    localStorage.removeItem(key);
+    showToast(`☁️ Todos los registros sincronizados ✓`);
+  }
+  updateExportPanel();
+}
+
+function getOfflineCount() {
+  if (!projectKey) return 0;
+  const raw = localStorage.getItem(OFFLINE_KEY_PREFIX + projectKey);
+  return raw ? JSON.parse(raw).length : 0;
 }
 
 
@@ -954,8 +1051,27 @@ async function saveAndExport() {
   const now = new Date();
   const lat = document.getElementById('f-lat').value;
   const lng = document.getElementById('f-lng').value;
+  const nPoste = document.getElementById('f-num').value.trim();
 
-  // Await any pending photo uploads
+  // ── Validaciones según modo ──────────────────────────
+  const missing = [];
+  if (!nPoste) missing.push('N° Poste');
+  if (projectMode === 'estricto') {
+    if (!lat || !lng) missing.push('Coordenada GPS');
+    const photosTaken = photos.filter(Boolean).length;
+    if (photosTaken < 3) missing.push(`Fotos (${photosTaken}/3)`);
+  }
+  if (missing.length) {
+    showToast(`⚠️ Faltan: ${missing.join(', ')}`);
+    return;
+  }
+
+  // ── Detección de duplicados ──────────────────────────
+  if (records.some(r => r.n_poste && r.n_poste.toLowerCase() === nPoste.toLowerCase())) {
+    if (!confirm(`⚠️ El poste "${nPoste}" ya existe en este proyecto.\n\n¿Guardar de todas formas?`)) return;
+  }
+
+  // ── Esperar uploads de fotos ─────────────────────────
   await Promise.allSettled(photos.filter(Boolean).map(p => {
     if (p._uploadPromise) return p._uploadPromise;
     return Promise.resolve();
@@ -968,17 +1084,16 @@ async function saveAndExport() {
   });
 
   const record = {
-    uid,
-    seq: seqNum,
+    uid, seq: seqNum,
     fecha: now.toLocaleDateString('es-CO'),
     hora:  now.toLocaleTimeString('es-CO'),
-    n_poste:    document.getElementById('f-num').value,
-    direccion:  document.getElementById('f-dir').value,
-    material:   document.getElementById('f-mat').value,
-    altura:     document.getElementById('f-alt').value,
-    carga:      document.getElementById('f-car').value,
-    tension:    document.getElementById('f-ten').value,
-    estado:     document.getElementById('f-est').value,
+    n_poste: nPoste,
+    direccion: document.getElementById('f-dir').value,
+    material:  document.getElementById('f-mat').value,
+    altura:    document.getElementById('f-alt').value,
+    carga:     document.getElementById('f-car').value,
+    tension:   document.getElementById('f-ten').value,
+    estado:    document.getElementById('f-est').value,
     lat, lng,
     ubicacion: geoAddress || '',
     equipamiento,
@@ -989,15 +1104,17 @@ async function saveAndExport() {
     _photos: photos.filter(Boolean)
   };
 
-  // Save to Supabase
+  // ── Guardar en Supabase ──────────────────────────────
   try {
     await sbSaveRecord(record);
     records.push(record);
     showToast(`✓ ${uid} guardado en Supabase · ${records.length} postes`);
   } catch(e) {
     console.error('Error guardando en Supabase:', e);
-    showToast(`⚠️ Error en Supabase: ${e.message}. Intenta de nuevo.`);
-    return;
+    // Guardar en cola offline para sincronizar después
+    saveToOfflineQueue(record);
+    records.push(record);
+    showToast(`⚠️ Sin conexión — guardado local. Se sincronizará al reconectar.`);
   }
 
   goTo(3);
@@ -1011,6 +1128,7 @@ function newRecord() {
   document.getElementById('f-lng').value='';
   document.getElementById('gps-acc').textContent='Párate al pie del poste y presiona el botón';
   document.getElementById('gps-acc').style.color='';
+  geoAddress = ''; // reset entre postes para no heredar ubicación anterior
   // Reset dynamic fields
   document.querySelectorAll('.chip').forEach(ch=>ch.classList.remove('active'));
   document.querySelectorAll('.dyn-field').forEach(df=>df.classList.remove('open'));
@@ -1119,18 +1237,18 @@ const CSV_END  = ['UBICACION','LAT','LNG','FOTO_1','FOTO_2','FOTO_3','OBSERVACIO
 const CSV_COLS = [...CSV_BASE, ...CSV_DYN, ...CSV_END];
 
 function buildCSV() {
+  const esc = v => `"${String(v || '').replace(/"/g,'""')}"`;
   const lines = [CSV_COLS.join(',')];
   records.forEach(r => {
     const base = [
-      r.seq||'', r.uid, r.fecha, r.hora, r.n_poste, r.direccion||'',
-      r.material||'', r.altura||'', r.carga||'', r.tension||'', r.estado||''
+      r.seq||'', esc(r.uid), esc(r.fecha), esc(r.hora), esc(r.n_poste), esc(r.direccion||''),
+      esc(r.material||''), esc(r.altura||''), esc(r.carga||''), esc(r.tension||''), esc(r.estado||'')
     ];
     const eq = r.equipamiento || {};
-    const dyn = DYN_IDS.map(id => eq[id] !== undefined ? eq[id] : '0');
+    const dyn = DYN_IDS.map(id => esc(eq[id] !== undefined ? eq[id] : '0'));
     const end = [
-      `"${(r.ubicacion||'').replace(/"/g,'""')}"`,
-      `"${r.lat||''}","${r.lng||''}"`, r.foto1||'', r.foto2||'', r.foto3||'',
-      `"${(r.observaciones||'').replace(/"/g,'""')}"`
+      esc(r.ubicacion||''), esc(r.lat||''), esc(r.lng||''), esc(r.foto1||''), esc(r.foto2||''), esc(r.foto3||''),
+      esc(r.observaciones||'')
     ];
     lines.push([...base, ...dyn, ...end].join(','));
   });
@@ -1148,6 +1266,14 @@ function updateExportPanel() {
   setEl('ep-count',  n);
   setEl('ep-coords', `${wc} / ${n}`);
   setEl('ep-photos', `${photoCount} subidas`);
+
+  // Offline queue
+  const offCount = getOfflineCount();
+  const offBox = document.getElementById('offline-queue-box');
+  if (offBox) {
+    offBox.style.display = offCount > 0 ? 'block' : 'none';
+    setEl('offline-count', offCount);
+  }
 
   // CSV preview
   const csvStr = buildCSV();
@@ -1263,6 +1389,8 @@ async function clearAll(){
   try {
     await sbDeleteProject(projectKey);
     records = [];
+    localStorage.removeItem(OFFLINE_KEY_PREFIX + projectKey);
+    localStorage.removeItem(`pf_mode_${projectKey}`);
     showToast('Proyecto borrado de Supabase');
   } catch(e) {
     showToast('Error al borrar: ' + e.message);
