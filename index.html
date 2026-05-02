@@ -617,7 +617,8 @@ async function sendMagicLink() {
   const btn = document.getElementById('login-btn');
   if (!email) { msgEl.textContent = 'Ingresa tu correo'; msgEl.className = 'login-msg error'; return; }
   btn.disabled = true; btn.textContent = '⏳ Enviando...';
-  const { error } = await SB.auth.signInWithOtp({ email });
+  const redirectUrl = 'https://elald3ano.github.io/levantamientoposterias/';
+  const { error } = await SB.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectUrl } });
   if (error) {
     msgEl.textContent = 'Error: ' + error.message;
     msgEl.className = 'login-msg error';
