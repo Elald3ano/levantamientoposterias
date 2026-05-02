@@ -550,26 +550,39 @@ const BUCKET_FOTOS = 'fotos';
 // AUTH — Magic Link + Roles
 // ═══════════════════════════════════════════════════
 async function initAuth() {
-  const { data, error } = await SB.auth.getSession();
-  if (!error && data.session) {
-    currentUser = data.session.user;
-    await loadUserRole();
-    showProjectScreen();
-    updateUserUI();
-  } else {
-    showLoginScreen();
-  }
+  if (!SB) { showLoginScreen(); return; }
 
-  SB.auth.onAuthStateChange(async (event, session) => {
-    if (session) {
-      currentUser = session.user;
+  // Detectar sesión activa (incluye hash token del magic link)
+  try {
+    const { data, error } = await SB.auth.getSession();
+    if (!error && data.session) {
+      currentUser = data.session.user;
       await loadUserRole();
       showProjectScreen();
       updateUserUI();
     } else {
+      showLoginScreen();
+    }
+  } catch(e) {
+    console.warn('getSession error:', e);
+    showLoginScreen();
+  }
+
+  // Escuchar cambios de sesión (login/logout)
+  SB.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth event:', event, session?.user?.email);
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+      if (session) {
+        currentUser = session.user;
+        await loadUserRole();
+        showProjectScreen();
+        updateUserUI();
+      }
+    } else if (event === 'SIGNED_OUT') {
       currentUser = null;
       userRole = 'tecnico';
       showLoginScreen();
+      updateUserUI();
     }
   });
 }
@@ -599,7 +612,7 @@ async function sendMagicLink() {
   const btn = document.getElementById('login-btn');
   if (!email) { msgEl.textContent = 'Ingresa tu correo'; msgEl.className = 'login-msg error'; return; }
   btn.disabled = true; btn.textContent = '⏳ Enviando...';
-  const { error } = await SB.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+  const { error } = await SB.auth.signInWithOtp({ email });
   if (error) {
     msgEl.textContent = 'Error: ' + error.message;
     msgEl.className = 'login-msg error';
