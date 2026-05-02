@@ -26,6 +26,27 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 /* ── ADMIN ACTIONS ── */
 .admin-btn{background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;letter-spacing:1px}
 
+/* ── PROJECT SCREEN ── */
+#project-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px}
+#access-section{display:block}
+#ps-create-section{display:none}
+.ps-box{width:100%;max-width:400px}
+.ps-title{font-size:32px;font-weight:800;margin-bottom:4px}
+.ps-sub{font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+.ps-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.ps-input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;padding:13px 14px;outline:none;margin-bottom:10px;letter-spacing:.5px}
+.ps-input:focus{border-color:var(--accent)}
+.ps-input::placeholder{color:var(--muted);font-weight:400}
+.ps-hint{font-size:12px;color:var(--muted);margin-bottom:24px;font-style:italic}
+.ps-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer}
+.ps-saved{margin-top:20px}
+.ps-saved-title{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.ps-prev-item{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:7px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
+.ps-prev-item:hover{border-color:var(--accent)}
+.ps-prev-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)}
+.ps-prev-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.ps-prev-count{font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace}
+
 /* ── DYNAMIC FIELDS ── */
 .dyn-groups { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
 .dyn-group-label { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:7px; }
