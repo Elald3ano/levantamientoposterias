@@ -506,11 +506,6 @@ if (document.readyState === 'loading') {
 } else {
   updateModeUI();
 }
-  const raw  = document.getElementById('proj-input').value;
-  const safe = raw.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ \-_]/g,'').trim();
-  const slug = safe.replace(/\s+/g,'_');
-  document.getElementById('proj-preview').textContent = slug ? slug + '/' : '—';
-}
 
 async function startProject(nameOverride) {
   const raw = nameOverride || document.getElementById('proj-input').value.trim();
