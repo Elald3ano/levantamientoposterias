@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>PosteField v5</title>
+<title>PosteApp</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0f1117; --surface:#181c27; --card:#1e2333; --border:#2a3045;
-  --accent:#f5a623; --green:#3dd68c; --red:#ff5c5c;
-  --text:#e8eaf2; --muted:#6b7494; --input:#141720;
+  --bg:#0f1117; --surface:#181c27; --card:#1e2333; --border:#343d55;
+  --accent:#ff9500; --green:#3dd68c; --red:#ff5c5c;
+  --text:#e8eaf2; --muted:#929ab5; --input:#141720;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Barlow Condensed',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body{font-family:'Inter',sans-serif;font-weight:500;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 
 /* ── HEADER ── */
 header{background:var(--surface);border-bottom:2px solid var(--accent);height:52px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:500}
@@ -24,7 +24,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .logout-btn:hover{color:var(--red)}
 
 /* ── ADMIN ACTIONS ── */
-.admin-btn{background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;letter-spacing:1px}
+.admin-btn{background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;letter-spacing:1px}
 
 /* ── PROJECT SCREEN ── */
 #project-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -33,22 +33,22 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .ps-box{width:100%;max-width:400px}
 .ps-title{font-size:32px;font-weight:800;margin-bottom:4px}
 .ps-sub{font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.5}
-.ps-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
-.ps-input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;padding:13px 14px;outline:none;margin-bottom:10px;letter-spacing:.5px}
+.ps-label{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.ps-input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:18px;font-weight:600;padding:13px 14px;outline:none;margin-bottom:10px;letter-spacing:.5px}
 .ps-input:focus{border-color:var(--accent)}
-.ps-input::placeholder{color:var(--muted);font-weight:400}
+.ps-input::placeholder{color:var(--muted);font-weight:500}
 .ps-hint{font-size:12px;color:var(--muted);margin-bottom:24px;font-style:italic}
-.ps-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer}
+.ps-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Inter',sans-serif;font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer}
 .ps-saved{margin-top:20px}
-.ps-saved-title{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.ps-saved-title{font-size:12px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
 .ps-prev-item{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:7px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
 .ps-prev-item:hover{border-color:var(--accent)}
 .ps-prev-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)}
-.ps-prev-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.ps-prev-meta{font-size:12px;color:var(--muted);margin-top:2px}
 .ps-prev-count{font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace}
 
 .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border)}
-.tab{flex:1;padding:11px 4px 9px;border:none;background:transparent;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tab{flex:1;padding:11px 4px 9px;border:none;background:transparent;color:var(--muted);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
 .tab .tn{width:20px;height:20px;border-radius:50%;border:2px solid currentColor;font-size:10px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab.done{color:var(--green)}.tab.done .tn{background:var(--green);border-color:var(--green);color:var(--bg)}
@@ -57,21 +57,21 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .panel{display:none;padding:16px;max-width:660px;margin:0 auto}.panel.active{display:block}
 
 /* ── FIELDS ── */
-.sl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin:18px 0 10px;border-left:3px solid var(--accent);padding-left:8px}.sl:first-child{margin-top:0}
+.sl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin:18px 0 10px;border-left:3px solid var(--accent);padding-left:8px}.sl:first-child{margin-top:0}
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fg.full{grid-template-columns:1fr}
 .f{display:flex;flex-direction:column;gap:5px}
-.f label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.f label{font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
 .f input,.f select,.f textarea{background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;padding:9px 11px;outline:none;transition:border-color .2s;width:100%}
 .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--accent)}
 .f select option{background:var(--card)}.f textarea{resize:vertical;min-height:60px}
 
 /* ── COORDENADA ── */
 .coord-block{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:8px}
-.gps-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s}
+.gps-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s}
 .gps-btn.ok{background:var(--green)}.gps-btn.loading{background:var(--border);color:var(--muted);cursor:wait}
 .gps-acc{font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center;margin-top:7px;min-height:15px;color:var(--muted)}
 .coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.map-open-btn{width:100%;margin-top:8px;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.map-open-btn{width:100%;margin-top:8px;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s}
 .map-open-btn:hover{border-color:var(--green);color:var(--green)}
 
 /* ── MAPA MODAL ── */
@@ -96,7 +96,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .foto-slot:hover{border-color:var(--accent)}.foto-slot.done{border-style:solid;border-color:var(--green)}
 .foto-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
 .foto-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.8) 35%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:7px 4px}
-.foto-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.8);text-align:center;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1px}
+.foto-lbl{font-size:11px;font-weight:700;color:rgba(255,255,255,.8);text-align:center;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1px}
 .foto-fn{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--green);text-align:center;word-break:break-all}
 .foto-icon{font-size:26px;opacity:.3;margin-bottom:4px}.foto-slot.done .foto-icon{display:none}
 .foto-del{position:absolute;top:5px;right:5px;background:var(--red);border:none;border-radius:4px;color:white;font-size:11px;width:20px;height:20px;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:10}
@@ -106,7 +106,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 
 /* ── EXPORT PANEL ── */
 .export-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
-.ec-head{padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.ec-head{padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
 .ec-body{padding:12px 14px}
 .stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .stat-row:last-child{margin-bottom:0}
@@ -118,10 +118,10 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .fp-item{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .fp-item.ready{color:var(--green)}.fp-item .fi-icon{font-size:13px}
 
-.zip-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--green),#2ab577);border:none;border-radius:10px;color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;margin-top:16px}
+.zip-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--green),#2ab577);border:none;border-radius:10px;color:var(--bg);font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;margin-top:16px}
 .zip-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .zip-btn:disabled{background:var(--border);color:var(--muted);cursor:wait;transform:none}
-.csv-only-btn{width:100%;padding:11px;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.csv-only-btn{width:100%;padding:11px;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'Inter',sans-serif;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
 .csv-only-btn:hover{border-color:var(--accent);color:var(--accent)}
 
 .csv-preview{background:var(--input);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green);overflow-x:auto;white-space:pre;max-height:140px;overflow-y:auto;margin-top:10px}
@@ -135,7 +135,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .chip-row { display:flex; flex-wrap:wrap; gap:7px; }
 .chip {
   padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border);
-  background: var(--input); color: var(--muted); font-family:'Barlow Condensed',sans-serif;
+  background: var(--input); color: var(--muted); font-family:'Inter',sans-serif;
   font-size: 13px; font-weight: 700; letter-spacing: .5px; cursor: pointer;
   transition: all .15s; user-select: none; white-space: nowrap;
 }
@@ -150,10 +150,10 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .dyn-field.open { display: block; }
 @keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
 .dyn-field-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.dyn-field-header span { font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--green); text-transform:uppercase; }
+.dyn-field-header span { font-size:12px; font-weight:700; letter-spacing:1.5px; color:var(--green); text-transform:uppercase; }
 .dyn-field-header button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:0 4px; }
 .dyn-qty { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
-.dyn-qty .f label { color: var(--muted); font-size:10px; }
+.dyn-qty .f label { color: var(--muted); font-size:11px; }
 
 /* ── RECORDS SIDEBAR ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1999;display:none}
@@ -166,7 +166,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 
 /* ── BUTTONS ── */
 .btn-row{display:flex;gap:10px;margin-top:18px;padding-bottom:30px}
-.btn{flex:1;padding:12px;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .15s}
 .btn-p{background:var(--accent);color:var(--bg)}.btn-p:hover{filter:brightness(1.1)}
 .btn-s{background:var(--card);border:1px solid var(--border);color:var(--text)}
 .btn-g{background:var(--green);color:var(--bg)}.btn-g:hover{filter:brightness(1.05)}
@@ -187,7 +187,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .chip-row { display:flex; flex-wrap:wrap; gap:7px; }
 .chip {
   padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border);
-  background: var(--input); color: var(--muted); font-family:'Barlow Condensed',sans-serif;
+  background: var(--input); color: var(--muted); font-family:'Inter',sans-serif;
   font-size: 13px; font-weight: 700; letter-spacing: .5px; cursor: pointer;
   transition: all .15s; user-select: none; white-space: nowrap;
 }
@@ -202,10 +202,10 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .dyn-field.open { display: block; }
 @keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
 .dyn-field-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.dyn-field-header span { font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--green); text-transform:uppercase; }
+.dyn-field-header span { font-size:12px; font-weight:700; letter-spacing:1.5px; color:var(--green); text-transform:uppercase; }
 .dyn-field-header button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:0 4px; }
 .dyn-qty { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
-.dyn-qty .f label { color: var(--muted); font-size:10px; }
+.dyn-qty .f label { color: var(--muted); font-size:11px; }
 
 /* ── RECORDS SIDEBAR ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1999;display:none}
@@ -218,7 +218,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 
 /* ── BUTTONS ── */
 .btn-row{display:flex;gap:10px;margin-top:18px;padding-bottom:30px}
-.btn{flex:1;padding:12px;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .15s}
 .btn-p{background:var(--accent);color:var(--bg)}.btn-p:hover{filter:brightness(1.1)}
 .btn-s{background:var(--card);border:1px solid var(--border);color:var(--text)}
 .btn-g{background:var(--green);color:var(--bg)}.btn-g:hover{filter:brightness(1.05)}
@@ -239,7 +239,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 <!-- ══════════════════════════════════ PROJECT SETUP SCREEN ══════════════════════════════════ -->
 <div id="project-screen">
   <div class="ps-box">
-    <div class="ps-title">Poste<span style="color:var(--accent)">Field</span></div>
+    <div class="ps-title">Poste<span style="color:var(--accent)">App</span></div>
     <div class="ps-sub" id="ps-sub">Ingresa el código de acceso del proyecto.</div>
 
     <!-- Input de código de acceso -->
@@ -261,14 +261,14 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
       <div style="display:flex;gap:10px;margin-bottom:6px">
         <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-libre-label">
           <input type="radio" name="proj-mode" value="libre" checked onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
-          <div><div style="font-weight:700;font-size:14px">Libre</div><div style="font-size:11px;color:var(--muted)">Sin restricciones</div></div>
+          <div><div style="font-weight:700;font-size:14px">Libre</div><div style="font-size:12px;color:var(--muted)">Sin restricciones</div></div>
         </label>
         <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s" id="mode-estricto-label">
           <input type="radio" name="proj-mode" value="estricto" onchange="updateModeUI()" style="accent-color:var(--accent);width:18px;height:18px">
-          <div><div style="font-weight:700;font-size:14px">Estricto</div><div style="font-size:11px;color:var(--muted)">Requiere GPS + 3 fotos</div></div>
+          <div><div style="font-weight:700;font-size:14px">Estricto</div><div style="font-size:12px;color:var(--muted)">Requiere GPS + 3 fotos</div></div>
         </label>
       </div>
-      <div id="mode-requirements" style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6"></div>
+      <div id="mode-requirements" style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6"></div>
       <button class="ps-btn" onclick="createProject()">▶ CREAR PROYECTO</button>
     </div>
 
@@ -276,7 +276,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
       <div class="ps-saved-title" id="prev-projects-title">Proyectos</div>
       <div id="prev-projects-list"></div>
     </div>
-    <div id="ps-supabase-status" style="margin-top:12px;text-align:center;font-size:11px"></div>
+    <div id="ps-supabase-status" style="margin-top:12px;text-align:center;font-size:12px"></div>
     <div id="admin-code-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
       <div class="ps-saved-title">Cambiar código de administrador</div>
       <div style="display:flex;gap:8px">
@@ -289,11 +289,11 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 
 <!-- ══════════════════════════════════ MAIN APP ══════════════════════════════════ -->
 <header>
-  <div class="logo">Poste<span>Field</span> <span style="font-size:10px;opacity:.4;font-weight:400">v5</span></div>
+  <div class="logo">Poste<span>App</span></div>
   <div style="display:flex;gap:8px;align-items:center">
     <button class="logout-btn" id="logout-btn" style="display:none" onclick="clearAccess()" title="Salir">↩</button>
     <div class="project-chip" id="project-chip" onclick="promptChangeProject()" title="Toca para cambiar proyecto">📁 —</div>
-    <button onclick="openR()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;cursor:pointer;font-family:'Barlow Condensed';font-size:12px;font-weight:700;letter-spacing:1px">📋</button>
+    <button onclick="openR()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;cursor:pointer;font-family:'Inter';font-size:12px;font-weight:700;letter-spacing:1px">📋</button>
   </div>
 </header>
 
@@ -302,6 +302,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   <button class="tab" onclick="goTo(1)" id="tab1"><span class="tn">2</span>Ubicación</button>
   <button class="tab" onclick="goTo(2)" id="tab2"><span class="tn">3</span>Fotos</button>
   <button class="tab" onclick="goTo(3)" id="tab3"><span class="tn">4</span>Exportar</button>
+  <button class="tab" onclick="goTo(4)" id="tab4">💬 Soporte</button>
 </nav>
 
 <!-- JS ERROR BANNER -->
@@ -318,7 +319,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   </div>
 
   <div class="sl">Características Físicas
-    <span style="font-family:'Barlow Condensed';font-size:11px;color:var(--green);font-weight:400;letter-spacing:0;margin-left:8px;text-transform:none">↺ se conservan del poste anterior</span>
+    <span style="font-family:'Inter';font-size:12px;color:var(--green);font-weight:500;letter-spacing:0;margin-left:8px;text-transform:none">↺ se conservan del poste anterior</span>
   </div>
   <div class="fg">
     <div class="f">
@@ -365,7 +366,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 
   <!-- CAMPOS DINÁMICOS -->
   <div class="sl" style="margin-top:20px">Equipamiento del Poste
-    <span style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0;margin-left:8px;text-transform:none">— toca lo que tiene este poste</span>
+    <span style="font-family:'Inter';font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0;margin-left:8px;text-transform:none">— toca lo que tiene este poste</span>
   </div>
 
   <div class="dyn-groups" id="dyn-groups"></div>
@@ -451,7 +452,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
       <div class="ec-head" style="color:var(--accent)">⏳ Pendientes de sincronizar</div>
       <div class="ec-body">
         <div class="stat-row"><span class="stat-lbl">Registros sin subir</span><span class="stat-val warn" id="offline-count">0</span></div>
-        <button onclick="syncOfflineQueue()" style="margin-top:8px;width:100%;padding:10px;background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Barlow Condensed';font-size:14px;font-weight:700;letter-spacing:1.5px;cursor:pointer">↻ SINCRONIZAR AHORA</button>
+        <button onclick="syncOfflineQueue()" style="margin-top:8px;width:100%;padding:10px;background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Inter';font-size:14px;font-weight:700;letter-spacing:1.5px;cursor:pointer">↻ SINCRONIZAR AHORA</button>
       </div>
     </div>
   </div>
@@ -477,6 +478,41 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 
   <div class="btn-row" style="margin-top:16px">
     <button class="btn btn-p" onclick="newRecord()">+ REGISTRAR SIGUIENTE POSTE</button>
+  </div>
+</div>
+
+<!-- PANEL 5: SOPORTE -->
+<div class="panel" id="panel-4">
+  <div class="sl">Soporte</div>
+  <div class="export-card">
+    <div class="ec-head">Acerca de PosteApp</div>
+    <div class="ec-body">
+      <div class="stat-row"><span class="stat-lbl">Versión</span><span class="stat-val ok">2.0</span></div>
+      <div class="stat-row"><span class="stat-lbl">Autor</span><span class="stat-val">Daniel Cordoba</span></div>
+      <div class="stat-row"><span class="stat-lbl">Ubicación</span><span class="stat-val">Cali, Colombia</span></div>
+    </div>
+  </div>
+
+  <div class="export-card" style="margin-top:12px">
+    <div class="ec-head">Contacto</div>
+    <div class="ec-body">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <a href="https://wa.me/573166371216" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-decoration:none;color:var(--text);transition:border-color .2s">
+          <span style="font-size:24px">💬</span>
+          <div>
+            <div style="font-weight:700;font-size:14px">WhatsApp</div>
+            <div style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace">+57 3166371216</div>
+          </div>
+        </a>
+        <a href="mailto:danico8822@gmail.com" style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-decoration:none;color:var(--text);transition:border-color .2s">
+          <span style="font-size:24px">✉️</span>
+          <div>
+            <div style="font-weight:700;font-size:14px">Email</div>
+            <div style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace">danico8822@gmail.com</div>
+          </div>
+        </a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -572,7 +608,7 @@ const BUCKET_FOTOS = 'fotos';
 const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutos
 let ADMIN_CODE = '4839'; // fallback, se actualiza desde Supabase
 
-function initApp() {
+async function initApp() {
   // Verificar timeout de inactividad
   const ts = localStorage.getItem('pf_access_ts');
   if (ts && Date.now() - parseInt(ts) > SESSION_TIMEOUT) {
@@ -581,7 +617,7 @@ function initApp() {
     accessCode = '';
   }
   // Cargar admin code desde Supabase
-  loadAdminCode();
+  await loadAdminCode();
   // Restaurar código guardado
   const saved = localStorage.getItem('pf_access_code');
   if (saved) {
@@ -611,11 +647,15 @@ async function loadAdminCode() {
 async function updateAdminCode(newCode) {
   const code = newCode.trim().toUpperCase();
   if (!code || code.length < 4) { showToast('El código debe tener mínimo 4 caracteres'); return; }
-  const { error } = await SB.from('config').upsert({ key: 'admin_code', value: code }, { onConflict: 'key' });
-  if (error) { showToast('Error: ' + error.message); return; }
-  ADMIN_CODE = code;
-  showToast('✓ Código admin actualizado');
-  document.getElementById('admin-code-input').value = '';
+  try {
+    const { error } = await SB.from('config').upsert({ key: 'admin_code', value: code }, { onConflict: 'key' });
+    if (error) { showToast('Error: ' + error.message); return; }
+    ADMIN_CODE = code;
+    showToast('✓ Código admin actualizado');
+    document.getElementById('admin-code-input').value = '';
+  } catch (e) {
+    showToast('Error de conexión al guardar el código. Revisa tu internet.');
+  }
 }
 
 async function verifyCode() {
@@ -890,7 +930,7 @@ function goTo(step) {
   document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===step));
   document.querySelectorAll('.tab').forEach((b,i) => {
     b.classList.remove('active','done');
-    if(i < step) b.classList.add('done');
+    if(i < step && i !== 4) b.classList.add('done');
     if(i === step) b.classList.add('active');
   });
   window.scrollTo(0,0);
@@ -1888,7 +1928,7 @@ function renderR(){
     <div class="ri">
       <div class="ri-id">${escHtml(r.uid)}</div>
       <div class="ri-meta">Poste ${escHtml(r.n_poste||'—')} · ${escHtml(r.material||'—')} · <span style="color:${r.estado==='Bueno'?'var(--green)':r.estado==='Malo'?'var(--red)':'var(--accent)'}">${escHtml(r.estado||'—')}</span></div>
-      <div class="ri-meta" style="font-size:11px;margin-top:2px">
+      <div class="ri-meta" style="font-size:12px;margin-top:2px">
         ${r.lat?`📍 ${parseFloat(r.lat).toFixed(5)}, ${parseFloat(r.lng).toFixed(5)}`:'📍 Sin coord'}
         · ${[r.foto1,r.foto2,r.foto3].filter(Boolean).length} fotos
         · ${escHtml(r.fecha)}
