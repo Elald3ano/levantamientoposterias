@@ -1327,6 +1327,12 @@ function confirmMapCoord() {
 // ═══════════════════════════════════════════════════
 function trigCam(i) {
   if (photos[i]) return;
+  const lat = document.getElementById('f-lat').value;
+  const lng = document.getElementById('f-lng').value;
+  if (!lat || !lng) {
+    showToast('⚠️ Primero captura la coordenada GPS del poste');
+    return;
+  }
   clearSlotHighlight();
   document.getElementById(`cam-${i}`).click();
 }
