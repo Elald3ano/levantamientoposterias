@@ -622,8 +622,11 @@ async function initApp() {
     localStorage.removeItem('pf_access_ts');
     accessCode = '';
   }
-  // Cargar admin code desde Supabase
-  await loadAdminCode();
+  // Cargar admin code desde Supabase (con timeout de 5s)
+  await Promise.race([
+    loadAdminCode(),
+    new Promise(r => setTimeout(r, 5000))
+  ]);
   // Restaurar código guardado
   const saved = localStorage.getItem('pf_access_code');
   if (saved) {
