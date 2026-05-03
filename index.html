@@ -704,14 +704,14 @@ function clearAccess() {
   localStorage.removeItem('pf_access_ts');
   accessCode = '';
   isAdmin = false;
+  document.getElementById('project-screen').style.display = 'flex';
   document.getElementById('admin-code-section').style.display = 'none';
   document.getElementById('access-section').style.display = 'block';
   document.getElementById('ps-create-section').style.display = 'none';
   document.getElementById('prev-projects-section').style.display = 'none';
   document.getElementById('access-input').value = '';
-  document.getElementById('ps-sub').textContent = '';
+  document.getElementById('ps-sub').textContent = 'Ingresa el código de acceso del proyecto.';
   document.getElementById('ps-supabase-status').textContent = '';
-  // Volver al header sin proyecto
   document.getElementById('project-chip').textContent = '📁 —';
   document.querySelector('header').style.display = 'flex';
   document.querySelector('.tabs').style.display = 'flex';
