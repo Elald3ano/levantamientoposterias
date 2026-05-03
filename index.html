@@ -552,7 +552,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   <div id="rlist"></div>
   <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">
     <button class="btn btn-g" onclick="exportZIP();closeR()">📦 DESCARGAR ZIP</button>
-    <button class="btn" onclick="clearAll()" style="background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.3);color:var(--red)">🗑 Borrar proyecto</button>
+    <button class="btn" onclick="clearAll()" style="background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.3);color:var(--red)">🗑 Borrar registros</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -884,13 +884,14 @@ async function loadPrevProjects() {
     list.innerHTML = data.map(p => {
       const safeName = escHtml(p.nombre);
       const statusIcon = p.activo ? '🟢' : '🔴';
-      const actionBtn = isAdmin
-        ? `<button class="admin-btn" style="font-size:10px;padding:4px 8px" onclick="event.stopPropagation();toggleProject('${escHtml(p.proyecto_key)}',${p.activo})">${p.activo ? '🔴 Desactivar' : '🟢 Activar'}</button>`
+      const actionBtns = isAdmin
+        ? `<button class="admin-btn" style="font-size:9px;padding:3px 6px;background:rgba(255,92,92,.15);border:1px solid var(--red);color:var(--red)" onclick="event.stopPropagation();deleteProject('${escHtml(p.proyecto_key)}','${safeName.replace(/'/g, "\\'")}')">🗑</button>
+           <button class="admin-btn" style="font-size:10px;padding:4px 8px" onclick="event.stopPropagation();toggleProject('${escHtml(p.proyecto_key)}',${p.activo})">${p.activo ? '🔴 Desactivar' : '🟢 Activar'}</button>`
         : '';
       return `<div class="ps-prev-item" onclick="startProject('${safeName.replace(/'/g, "\\'")}')">
         <div><div class="ps-prev-name">${statusIcon} ${safeName}</div><div class="ps-prev-meta">Código: ${escHtml(p.codigo_acceso)} · ${p.modo}</div></div>
-        <div style="display:flex;align-items:center;gap:6px">
-          ${actionBtn}
+        <div style="display:flex;align-items:center;gap:4px">
+          ${actionBtns}
           <div class="ps-prev-count">▶</div>
         </div>
       </div>`;
@@ -932,6 +933,53 @@ async function toggleProject(key, currentlyActive) {
   await SB.from('proyectos').update({ activo: newState }).eq('proyecto_key', key);
   showToast(newState ? '🟢 Proyecto activado' : '🔴 Proyecto desactivado');
   loadPrevProjects();
+}
+
+async function deleteProject(projKey, projName) {
+  if (!confirm(`⚠️ ¿Eliminar definitivamente el proyecto "${projName}"?\n\nSe borrarán TODOS los registros, fotos y el proyecto de Supabase.`)) return;
+  if (!confirm('¿Estás seguro? Esta acción NO se puede deshacer.')) return;
+
+  try {
+    // Descargar ZIP como respaldo primero
+    showToast('📦 Generando respaldo ZIP...');
+    projectKey = projKey;
+    projectName = projName;
+    const sbRecords = await SB.from('registros').select('*').eq('proyecto', projKey).order('seq', { ascending: true });
+    if (sbRecords.data && sbRecords.data.length) {
+      // Cargar registros temporalmente para el ZIP
+      const tempRecords = sbRecords.data.map(r => ({
+        ...r,
+        _photos: [r.foto1, r.foto2, r.foto3].filter(Boolean).map(name => {
+          const { data } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(`${projKey}/${name}`);
+          return { name, url: data?.publicUrl || '' };
+        })
+      }));
+      // Usar records globales temporalmente para exportZIP
+      const saved = records;
+      records = tempRecords;
+      try { await exportZIP(); } catch(_) {}
+      records = saved;
+    }
+
+    // Eliminar de Supabase
+    await sbDeleteProject(projKey);
+
+    // Limpiar localStorage
+    localStorage.removeItem(OFFLINE_KEY_PREFIX + projKey);
+    localStorage.removeItem(`pf_mode_${projKey}`);
+    localStorage.removeItem(`pf_draft_${projKey}`);
+
+    // Limpiar caché de proyectos
+    try {
+      const cache = JSON.parse(localStorage.getItem('pf_projects_cache') || '[]');
+      localStorage.setItem('pf_projects_cache', JSON.stringify(cache.filter(p => p.proyecto_key !== projKey)));
+    } catch(_) {}
+
+    showToast('✓ Proyecto eliminado');
+    loadPrevProjects();
+  } catch(e) {
+    showToast('Error al eliminar: ' + e.message);
+  }
 }
 
 function promptChangeProject() {
@@ -1035,13 +1083,17 @@ async function sbSaveRecord(record) {
 
 async function sbDeleteProject(projKey) {
   // Delete photos from storage
-  const { data: files } = await SB.storage.from(BUCKET_FOTOS).list(projKey);
-  if (files && files.length) {
-    const paths = files.map(f => `${projKey}/${f.name}`);
-    await SB.storage.from(BUCKET_FOTOS).remove(paths);
-  }
+  try {
+    const { data: files } = await SB.storage.from(BUCKET_FOTOS).list(projKey);
+    if (files && files.length) {
+      const paths = files.map(f => `${projKey}/${f.name}`);
+      await SB.storage.from(BUCKET_FOTOS).remove(paths);
+    }
+  } catch(e) { /* puede fallar si no hay fotos */ }
   // Delete records
   await SB.from('registros').delete().eq('proyecto', projKey);
+  // Delete project
+  await SB.from('proyectos').delete().eq('proyecto_key', projKey);
 }
 
 // ═══════════════════════════════════════════════════
