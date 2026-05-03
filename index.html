@@ -250,8 +250,8 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
     <!-- Input de código de acceso -->
     <div id="access-section">
       <div class="ps-label">Código de Acceso</div>
-      <input class="ps-input" id="access-input" type="text" placeholder="Ej: XK9M2P" maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter')verifyCode()">
-      <button class="ps-btn" onclick="verifyCode()">▶ ENTRAR</button>
+      <input class="ps-input" id="access-input" type="text" placeholder="Ej: XK9M2P" maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();verifyCode();}">
+      <button type="button" class="ps-btn" id="enter-btn" onclick="verifyCode()">▶ ENTRAR</button>
     </div>
 
     <!-- ADMIN: crear proyecto -->
@@ -638,7 +638,13 @@ function initApp() {
   }
   // Mostrar project screen inmediatamente
   document.getElementById('project-screen').style.display = 'flex';
+  document.getElementById('ps-sub').textContent = '✓ App lista. Ingresa el código de acceso.';
   updateConnDot();
+  // Registrar listener del botón ENTRAR como respaldo
+  const enterBtn = document.getElementById('enter-btn');
+  if (enterBtn) {
+    enterBtn.addEventListener('click', verifyCode);
+  }
 }
 
 function resetActivityTimer() {
