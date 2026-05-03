@@ -1325,9 +1325,7 @@ function confirmMapCoord() {
 // ═══════════════════════════════════════════════════
 function trigCam(i) {
   if (photos[i]) return;
-  const inp = document.getElementById(`cam-${i}`);
-  if (inp._processing) return;
-  inp.click();
+  document.getElementById(`cam-${i}`).click();
 }
 
 function handleFoto(e,i) {
@@ -1490,9 +1488,12 @@ function handleFoto(e,i) {
           showToast('⚠️ Error al subir foto — se guardará localmente');
           throw e;
         });
-      // Auto-encadenar siguiente foto en modo Estricto
-      if (projectMode === 'estricto' && i < 2) {
-        setTimeout(() => trigCam(i + 1), 1000);
+      // Auto-encadenar siguiente foto
+      if (i < 2) {
+        setTimeout(() => {
+          showToast(`📸 Abriendo cámara para foto ${i+2}...`);
+          trigCam(i + 1);
+        }, 1200);
       }
       inp._processing = false;
     };
