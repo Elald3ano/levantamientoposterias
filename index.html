@@ -468,7 +468,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
   <div class="csv-preview" id="csv-preview">—</div>
 
   <button class="zip-btn" id="zip-btn" onclick="exportZIP()">
-    📦 DESCARGAR ZIP (fotos desde Supabase)
+    📦 DESCARGAR ZIP (CSV + KML + fotos)
   </button>
   <button class="csv-only-btn" onclick="downloadCSVOnly()">↓ Solo CSV</button>
   <button class="csv-only-btn" onclick="downloadKML()">📍 Solo KML</button>
@@ -1824,6 +1824,10 @@ async function exportZIP() {
     // CSV
     folder.file(`${projectKey}_datos.csv`, '\uFEFF'+buildCSV());
 
+    // KML
+    const kmlContent = buildKML();
+    if (kmlContent) folder.file(`${projectKey}_mapa.kml`, kmlContent);
+
     // Photos: from memory (b64) or download from Supabase Storage
     const allPhotos = [];
     records.forEach(r => {
@@ -1874,7 +1878,7 @@ async function exportZIP() {
     showToast('Error al generar ZIP: '+err.message);
     console.error(err);
   } finally {
-    btn.disabled=false; btn.textContent='📦 DESCARGAR ZIP (fotos desde Supabase)';
+    btn.disabled=false; btn.textContent='📦 DESCARGAR ZIP (CSV + KML + fotos)';
   }
 }
 
@@ -1889,21 +1893,28 @@ function downloadCSVOnly() {
   showToast(`↓ CSV descargado · ${records.length} registros`);
 }
 
-function downloadKML() {
-  if(!records.length){ showToast('No hay registros aún'); return; }
+function buildKML() {
+  const places = records.filter(r=>r.lat&&r.lng);
+  if (!places.length) return null;
   const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const places = records.filter(r=>r.lat&&r.lng).map(r => `
+  const placemarks = places.map(r => `
     <Placemark>
       <name>${esc(r.uid)}</name>
       <description>Poste: ${esc(r.n_poste)} · ${esc(r.estado)} · ${esc(r.material)} · Alt:${esc(r.altura)}m</description>
       <Point><coordinates>${r.lng},${r.lat},0</coordinates></Point>
     </Placemark>`).join('');
-  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document><name>${escHtml(projectName)}</name>${places}</Document>
+  <Document><name>${escHtml(projectName)}</name>${placemarks}</Document>
 </kml>`;
+}
+
+function downloadKML() {
+  const kml = buildKML();
+  if (!kml) { showToast('No hay registros con coordenadas'); return; }
+  const places = records.filter(r=>r.lat&&r.lng).length;
   downloadBlob(kml, `${projectKey}_mapa.kml`, 'application/vnd.google-earth.kml+xml');
-  showToast(`📍 KML descargado · ${places.length} puntos`);
+  showToast(`📍 KML descargado · ${places} puntos`);
 }
 
 function downloadGeoJSON() {
