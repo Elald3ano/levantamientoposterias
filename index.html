@@ -619,7 +619,7 @@ const BUCKET_FOTOS = 'fotos';
 const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutos
 let ADMIN_CODE = '4839'; // fallback, se actualiza desde Supabase
 
-async function initApp() {
+function initApp() {
   // Verificar timeout de inactividad
   const ts = localStorage.getItem('pf_access_ts');
   if (ts && Date.now() - parseInt(ts) > SESSION_TIMEOUT) {
@@ -627,19 +627,16 @@ async function initApp() {
     localStorage.removeItem('pf_access_ts');
     accessCode = '';
   }
-  // Cargar admin code desde Supabase (con timeout de 5s)
-  await Promise.race([
-    loadAdminCode(),
-    new Promise(r => setTimeout(r, 5000))
-  ]);
+  // Cargar admin code desde Supabase (en background, no bloquea)
+  loadAdminCode();
   // Restaurar código guardado
   const saved = localStorage.getItem('pf_access_code');
   if (saved) {
     accessCode = saved;
     document.getElementById('access-input').value = saved;
-    verifyCode();
+    setTimeout(() => verifyCode(), 100);
   }
-  // Mostrar project screen
+  // Mostrar project screen inmediatamente
   document.getElementById('project-screen').style.display = 'flex';
   updateConnDot();
 }
