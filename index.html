@@ -586,6 +586,11 @@ window.onerror = function(msg, src, line, col, err) {
   console.error('JS ERROR:', msg, src, line);
   return false;
 };
+window.addEventListener('unhandledrejection', e => {
+  const el = document.getElementById('js-error-banner');
+  if(el) { el.style.display='block'; el.textContent = `Promise Error: ${e.reason}`; }
+  console.error('UNHANDLED REJECTION:', e.reason);
+});
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
@@ -669,6 +674,7 @@ async function updateAdminCode(newCode) {
 }
 
 async function verifyCode() {
+  try {
   const input = document.getElementById('access-input').value.trim().toUpperCase();
   if (!input) { showToast('Ingresa un código de acceso'); return; }
 
@@ -689,10 +695,12 @@ async function verifyCode() {
 
   // ¿Es un código de proyecto?
   let data = null;
-  try {
-    const res = await SB.from('proyectos').select('*').eq('codigo_acceso', input).eq('activo', true).single();
-    if (!res.error) data = res.data;
-  } catch (e) { /* offline — buscar en caché */ }
+  if (SB) {
+    try {
+      const res = await SB.from('proyectos').select('*').eq('codigo_acceso', input).eq('activo', true).single();
+      if (!res.error) data = res.data;
+    } catch (e) { /* offline — buscar en caché */ }
+  }
 
   // Fallback: buscar en caché local
   if (!data) {
@@ -718,6 +726,10 @@ async function verifyCode() {
   // Entrar directo al proyecto
   projectMode = data.modo || 'libre';
   startProject(data.nombre);
+  } catch(e) {
+    showToast('Error: ' + (e.message || 'inesperado'));
+    console.error(e);
+  }
 }
 
 function clearAccess() {
