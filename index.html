@@ -94,6 +94,8 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 .foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .foto-slot{aspect-ratio:3/4;background:var(--input);border:2px dashed var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s}
 .foto-slot:hover{border-color:var(--accent)}.foto-slot.done{border-style:solid;border-color:var(--green)}
+.foto-slot.next{border-color:var(--accent);animation:pulse-border 1.2s infinite}
+@keyframes pulse-border{0%,100%{border-color:var(--accent);box-shadow:0 0 0 0 rgba(255,149,0,.3)}50%{border-color:var(--green);box-shadow:0 0 0 6px rgba(255,149,0,0)}}
 .foto-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
 .foto-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.8) 35%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:7px 4px}
 .foto-lbl{font-size:11px;font-weight:700;color:rgba(255,255,255,.8);text-align:center;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1px}
@@ -1325,7 +1327,22 @@ function confirmMapCoord() {
 // ═══════════════════════════════════════════════════
 function trigCam(i) {
   if (photos[i]) return;
+  clearSlotHighlight();
   document.getElementById(`cam-${i}`).click();
+}
+
+function highlightNextSlot(currentIdx) {
+  clearSlotHighlight();
+  const next = currentIdx + 1;
+  if (next < 3 && !photos[next]) {
+    document.getElementById(`slot-${next}`).classList.add('next');
+  }
+}
+
+function clearSlotHighlight() {
+  for (let i = 0; i < 3; i++) {
+    document.getElementById(`slot-${i}`).classList.remove('next');
+  }
 }
 
 function handleFoto(e,i) {
@@ -1488,13 +1505,8 @@ function handleFoto(e,i) {
           showToast('⚠️ Error al subir foto — se guardará localmente');
           throw e;
         });
-      // Auto-encadenar siguiente foto
-      if (i < 2) {
-        setTimeout(() => {
-          showToast(`📸 Abriendo cámara para foto ${i+2}...`);
-          trigCam(i + 1);
-        }, 1200);
-      }
+      // Resaltar el siguiente slot vacío
+      highlightNextSlot(i);
       inp._processing = false;
     };
     img.src=ev.target.result;
@@ -1511,6 +1523,11 @@ function rmFoto(e,i) {
   const inp = document.getElementById(`cam-${i}`);
   inp.value = '';
   inp._processing = false;
+  clearSlotHighlight();
+  // Resaltar el primer slot vacío
+  for (let j = 0; j < 3; j++) {
+    if (!photos[j]) { document.getElementById(`slot-${j}`).classList.add('next'); break; }
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1616,6 +1633,7 @@ function newRecord() {
   btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
   if(mapInst) { mapInst.remove(); mapInst = null; }
   mapReady=false;
+  clearSlotHighlight();
   seqNum = records.length > 0 ? Math.max(...records.map(r => r.seq)) + 1 : 1;
   uid=genUID(); refreshFilenames();
   // GPS en background: mientras llenas la encuesta ya se está capturando
