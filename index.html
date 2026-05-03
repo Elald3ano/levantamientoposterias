@@ -1194,11 +1194,19 @@ function captureGPS() {
         showToast(`📍 ${geoAddress}`);
       })
       .catch(() => { geoAddress = ''; });
-  }, () => {
+  }, err => {
     btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
-    acc.textContent='No se obtuvo GPS. Ingresa la coordenada manualmente.';
     acc.style.color='var(--red)';
-    showToast('Error GPS — intenta al aire libre o ingresa manual');
+    if (err.code === 1) {
+      acc.textContent = 'Permiso de ubicación denegado. Actívalo en Ajustes.';
+      showToast('⚠️ Permiso de ubicación denegado');
+    } else if (err.code === 2) {
+      acc.textContent = 'GPS apagado o sin señal. Activa el GPS en tu dispositivo.';
+      showToast('⚠️ GPS apagado. Actívalo en tu dispositivo.');
+    } else {
+      acc.textContent = 'No se obtuvo GPS. Ingresa la coordenada manualmente.';
+      showToast('Error GPS — intenta al aire libre o ingresa manual');
+    }
   }, { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
 }
 
@@ -1315,10 +1323,19 @@ function confirmMapCoord() {
 // ═══════════════════════════════════════════════════
 // FOTOS
 // ═══════════════════════════════════════════════════
-function trigCam(i) { document.getElementById(`cam-${i}`).click(); }
+function trigCam(i) {
+  if (photos[i]) return;
+  const inp = document.getElementById(`cam-${i}`);
+  if (inp._processing) return;
+  inp.click();
+}
 
 function handleFoto(e,i) {
+  const inp = e.target;
+  if (inp._processing) { inp.value = ''; return; }
   const file = e.target.files[0]; if(!file) return;
+  inp._processing = true;
+  inp.value = '';
   const reader = new FileReader();
   reader.onload = ev => {
     const name = `${uid}_F0${i+1}.jpg`;
@@ -1475,8 +1492,9 @@ function handleFoto(e,i) {
         });
       // Auto-encadenar siguiente foto en modo Estricto
       if (projectMode === 'estricto' && i < 2) {
-        setTimeout(() => trigCam(i + 1), 600);
+        setTimeout(() => trigCam(i + 1), 1000);
       }
+      inp._processing = false;
     };
     img.src=ev.target.result;
   };
@@ -1489,7 +1507,9 @@ function rmFoto(e,i) {
   const im=s.querySelector('img'); if(im) im.remove();
   s.classList.remove('done');
   document.getElementById(`fn-${i}`).textContent='—';
-  document.getElementById(`cam-${i}`).value='';
+  const inp = document.getElementById(`cam-${i}`);
+  inp.value = '';
+  inp._processing = false;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1587,7 +1607,9 @@ function newRecord() {
     const im=s.querySelector('img'); if(im) im.remove();
     s.classList.remove('done');
     document.getElementById(`fn-${i}`).textContent='—';
-    document.getElementById(`cam-${i}`).value='';
+    const inp = document.getElementById(`cam-${i}`);
+    inp.value = '';
+    inp._processing = false;
   }
   const btn=document.getElementById('gps-btn');
   btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
