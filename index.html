@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>PosteApp</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1117">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -293,6 +296,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
 <header>
   <div class="logo">Poste<span>App</span></div>
   <div style="display:flex;gap:8px;align-items:center">
+    <span id="conn-dot" style="font-size:10px;line-height:1" title="Estado de conexión">🔴</span>
     <button class="logout-btn" id="logout-btn" style="display:none" onclick="clearAccess()" title="Salir">↩</button>
     <div class="project-chip" id="project-chip" onclick="promptChangeProject()" title="Toca para cambiar proyecto">📁 —</div>
     <button onclick="openR()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;cursor:pointer;font-family:'Inter';font-size:12px;font-weight:700;letter-spacing:1px">📋</button>
@@ -629,6 +633,7 @@ async function initApp() {
   }
   // Mostrar project screen
   document.getElementById('project-screen').style.display = 'flex';
+  updateConnDot();
 }
 
 function resetActivityTimer() {
@@ -988,6 +993,79 @@ async function sbDeleteProject(projKey) {
   await SB.from('registros').delete().eq('proyecto', projKey);
 }
 
+// ═══════════════════════════════════════════════════
+// INDEXEDDB — Persistencia offline de fotos
+// ═══════════════════════════════════════════════════
+let idb = null;
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    if (idb) return resolve(idb);
+    const req = indexedDB.open('posteapp', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('photos')) {
+        db.createObjectStore('photos', { keyPath: 'name' });
+      }
+    };
+    req.onsuccess = e => { idb = e.target.result; resolve(idb); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSavePhoto(name, b64) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.objectStore('photos').put({ name, b64, uploaded: false });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGetPhoto(name) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readonly');
+    const req = tx.objectStore('photos').get(name);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGetPendingPhotos() {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readonly');
+    const req = tx.objectStore('photos').getAll();
+    req.onsuccess = () => resolve(req.result.filter(p => !p.uploaded));
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbMarkUploaded(name) {
+  const db = await idbOpen();
+  const photo = await idbGetPhoto(name);
+  if (photo) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readwrite');
+      photo.uploaded = true;
+      tx.objectStore('photos').put(photo);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+}
+
+async function idbDeletePhoto(name) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.objectStore('photos').delete(name);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 // ── COLA OFFLINE ────────────────────────────────────────────────
 const OFFLINE_KEY_PREFIX = 'pf_offline_';
 
@@ -1000,6 +1078,18 @@ function saveToOfflineQueue(record) {
 
 async function syncOfflineQueue() {
   if (!projectKey) return;
+
+  // Retry pending photo uploads from IndexedDB
+  try {
+    const pendingPhotos = await idbGetPendingPhotos();
+    for (const p of pendingPhotos) {
+      try {
+        await sbUploadPhoto(p.b64, p.name);
+        await idbMarkUploaded(p.name);
+      } catch(e) { /* retry next time */ }
+    }
+  } catch(e) { /* IndexedDB might not be available */ }
+
   const key = OFFLINE_KEY_PREFIX + projectKey;
   const raw = localStorage.getItem(key);
   if (!raw) return;
@@ -1032,6 +1122,23 @@ function getOfflineCount() {
   const raw = localStorage.getItem(OFFLINE_KEY_PREFIX + projectKey);
   return raw ? JSON.parse(raw).length : 0;
 }
+
+// ── CONECTIVIDAD ───────────────────────────────────────────────
+function updateConnDot() {
+  const dot = document.getElementById('conn-dot');
+  if (dot) dot.textContent = navigator.onLine ? '🟢' : '🔴';
+}
+
+window.addEventListener('online', () => {
+  updateConnDot();
+  showToast('🌐 Conexión restaurada — sincronizando...');
+  syncOfflineQueue();
+});
+
+window.addEventListener('offline', () => {
+  updateConnDot();
+  showToast('📡 Sin conexión — los datos se guardan localmente');
+});
 
 // ── AUTO-GUARDADO BORRADOR ─────────────────────────────────────
 let draftInterval = null;
@@ -1481,6 +1588,9 @@ function handleFoto(e,i) {
       const b64 = canvas.toDataURL('image/jpeg', 0.88);
       photos[i] = { name, b64 };
 
+      // Persistir en IndexedDB para disponibilidad offline
+      idbSavePhoto(name, b64).catch(() => {});
+
       const slot=document.getElementById(`slot-${i}`);
       let im=slot.querySelector('img');
       if(!im){im=document.createElement('img');slot.insertBefore(im,slot.firstChild);}
@@ -1491,6 +1601,7 @@ function handleFoto(e,i) {
       photos[i]._uploadPromise = sbUploadPhoto(b64, name)
         .then(url => {
           photos[i].url = url;
+          idbMarkUploaded(name).catch(() => {});
           showToast(`☁️ ${name} subida a Supabase`);
           return url;
         })
@@ -2018,6 +2129,9 @@ function showToast(msg){
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2800);
 }
 initApp();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
