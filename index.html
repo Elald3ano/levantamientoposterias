@@ -685,8 +685,21 @@ async function verifyCode() {
   }
 
   // ¿Es un código de proyecto?
-  const { data, error } = await SB.from('proyectos').select('*').eq('codigo_acceso', input).eq('activo', true).single();
-  if (error || !data) {
+  let data = null;
+  try {
+    const res = await SB.from('proyectos').select('*').eq('codigo_acceso', input).eq('activo', true).single();
+    if (!res.error) data = res.data;
+  } catch (e) { /* offline — buscar en caché */ }
+
+  // Fallback: buscar en caché local
+  if (!data) {
+    try {
+      const cache = JSON.parse(localStorage.getItem('pf_projects_cache') || '[]');
+      data = cache.find(p => p.codigo_acceso === input && p.activo);
+    } catch (_) {}
+  }
+
+  if (!data) {
     showToast('⚠️ Código inválido o proyecto inactivo');
     return;
   }
@@ -777,29 +790,37 @@ async function startProject(nameOverride) {
 
 async function openProject() {
   // Load records from Supabase
-  if (!SB) { showToast('⚠️ Supabase no cargó. Recarga la página.'); records = []; }
-  else {
-    const { data, error } = await SB
-      .from('registros')
-      .select('*')
-      .eq('proyecto', projectKey)
-      .order('seq', { ascending: true });
+  records = [];
+  if (SB) {
+    try {
+      const { data, error } = await SB
+        .from('registros')
+        .select('*')
+        .eq('proyecto', projectKey)
+        .order('seq', { ascending: true });
 
-    if (error) {
-      showToast('Error al cargar proyecto: ' + error.message);
-      console.error(error);
-      records = [];
-    } else {
-      records = data.map(r => ({
-        ...r,
-        _photos: [r.foto1, r.foto2, r.foto3]
-          .filter(Boolean)
-          .map(name => {
-            const path = `${projectKey}/${name}`;
-            const { data: d } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
-            return { name, url: d?.publicUrl || '' };
-          })
-      }));
+      if (error) {
+        showToast('Error al cargar proyecto: ' + error.message);
+      } else if (data) {
+        records = data.map(r => ({
+          ...r,
+          _photos: [r.foto1, r.foto2, r.foto3]
+            .filter(Boolean)
+            .map(name => {
+              const path = `${projectKey}/${name}`;
+              const { data: d } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
+              return { name, url: d?.publicUrl || '' };
+            })
+        }));
+      }
+    } catch (e) {
+      console.warn('Offline — usando datos locales');
+      // Cargar registros de la cola offline local si existen
+      try {
+        const key = OFFLINE_KEY_PREFIX + projectKey;
+        const raw = localStorage.getItem(key);
+        if (raw) records = JSON.parse(raw);
+      } catch (_) {}
     }
   }
 
@@ -847,7 +868,12 @@ async function loadPrevProjects() {
       sec.style.display = 'none';
       statusEl.textContent = isAdmin ? '☁️ Sin proyectos — crea el primero' : '';
       statusEl.style.color = 'var(--muted)';
+      localStorage.setItem('pf_projects_cache', '[]');
       return;
+    }
+
+    // Cachear proyectos para uso offline
+    localStorage.setItem('pf_projects_cache', JSON.stringify(data));
     }
 
     sec.style.display = 'block';
@@ -870,6 +896,31 @@ async function loadPrevProjects() {
       </div>`;
     }).join('');
   } catch (e) {
+    // Intentar cargar desde caché local
+    try {
+      const cache = JSON.parse(localStorage.getItem('pf_projects_cache') || '[]');
+      if (cache.length) {
+        sec.style.display = 'block';
+        title.textContent = isAdmin ? 'Todos los proyectos (offline)' : 'Proyecto';
+        statusEl.textContent = '📡 Modo offline — datos locales';
+        statusEl.style.color = 'var(--accent)';
+        list.innerHTML = cache.map(p => {
+          const safeName = escHtml(p.nombre);
+          const statusIcon = p.activo ? '🟢' : '🔴';
+          const actionBtn = isAdmin
+            ? '' // sin acciones en offline
+            : '';
+          return `<div class="ps-prev-item" onclick="startProject('${safeName.replace(/'/g, "\\'")}')">
+            <div><div class="ps-prev-name">${statusIcon} ${safeName}</div><div class="ps-prev-meta">Código: ${escHtml(p.codigo_acceso)} · ${p.modo}</div></div>
+            <div style="display:flex;align-items:center;gap:6px">
+              ${actionBtn}
+              <div class="ps-prev-count">▶</div>
+            </div>
+          </div>`;
+        }).join('');
+        return;
+      }
+    } catch (_) {}
     statusEl.textContent = '⚠️ Sin conexión';
     statusEl.style.color = 'var(--red)';
     sec.style.display = 'none';
