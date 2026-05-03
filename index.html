@@ -352,7 +352,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:52
       <label>Tensión</label>
       <select id="f-ten">
         <option value="">—</option>
-        <option>BT</option><option>MT</option><option>AT</option>
+        <option>BT</option><option>MT</option><option>AT</option><option>AP</option>
         <option>MT/BT - Doble circuito</option>
       </select>
     </div>
@@ -740,7 +740,7 @@ function updateModeUI() {
   document.getElementById('mode-libre-label').style.borderColor = projectMode === 'libre' ? 'var(--green)' : 'var(--border)';
   document.getElementById('mode-estricto-label').style.borderColor = projectMode === 'estricto' ? 'var(--accent)' : 'var(--border)';
   document.getElementById('mode-requirements').innerHTML = projectMode === 'estricto'
-    ? '🔒 <b>Obligatorio:</b> N° Poste · GPS · 3 fotos &nbsp;|&nbsp; No podrás guardar sin estos datos.'
+    ? '🔒 <b>Obligatorio:</b> N° Poste · Dirección · Material · Altura · Carga · Tensión · Estado · GPS · 3 fotos &nbsp;|&nbsp; No podrás guardar sin estos datos.'
     : '🆓 <b>Sin restricciones:</b> guarda con los datos que tengas.';
 }
 // Llamar cuando el DOM esté listo
@@ -1550,6 +1550,18 @@ async function saveAndExport() {
   if (!nPoste) missing.push('N° Poste');
   if (projectMode === 'estricto') {
     if (!lat || !lng) missing.push('Coordenada GPS');
+    const dir = document.getElementById('f-dir').value.trim();
+    if (!dir) missing.push('Dirección');
+    const mat = document.getElementById('f-mat').value;
+    if (!mat) missing.push('Material');
+    const alt = document.getElementById('f-alt').value;
+    if (!alt) missing.push('Altura');
+    const car = document.getElementById('f-car').value;
+    if (!car) missing.push('Carga');
+    const ten = document.getElementById('f-ten').value;
+    if (!ten) missing.push('Tensión');
+    const est = document.getElementById('f-est').value;
+    if (!est) missing.push('Estado del poste');
     const photosTaken = photos.filter(Boolean).length;
     if (photosTaken < 3) missing.push(`Fotos (${photosTaken}/3)`);
   }
