@@ -601,6 +601,7 @@ let records     = [];
 let photos      = [null, null, null];
 let uid         = '';
 let mapInst     = null, mapReady = false;
+let userMarker  = null, gpsWatchId = null, userAccCircle = null;
 let geoAddress  = '';
 let seqNum      = 0;
 let projectMode = 'libre';
@@ -1470,6 +1471,7 @@ function openMap() {
     }
     mapReady = true;
   }
+  startUserLocationMarker();
   setTimeout(()=> mapInst.invalidateSize(), 120);
 }
 function closeMap() {
@@ -1479,6 +1481,35 @@ function closeMap() {
   if(cb) cb.style.display = '';
   document.querySelector('.mm-head h3').textContent = '📍 Afinar Ubicación';
   document.querySelector('.mm-head p').textContent = 'Mueve el mapa • el cursor señala el poste exacto';
+  stopUserLocationMarker();
+}
+function startUserLocationMarker() {
+  stopUserLocationMarker();
+  if (!navigator.geolocation || !mapInst) return;
+  gpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const acc = pos.coords.accuracy;
+      if (userMarker) { mapInst.removeLayer(userMarker); userMarker = null; }
+      if (userAccCircle) { mapInst.removeLayer(userAccCircle); userAccCircle = null; }
+      userAccCircle = L.circle([lat, lng], {
+        radius: acc, fillColor: '#4285F4', fillOpacity: 0.12,
+        color: '#4285F4', weight: 1, interactive: false
+      }).addTo(mapInst);
+      userMarker = L.circleMarker([lat, lng], {
+        radius: 8, fillColor: '#4285F4', fillOpacity: 1,
+        color: '#FFFFFF', weight: 2.5, interactive: false
+      }).addTo(mapInst);
+    },
+    () => {}, // silently fail
+    { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
+  );
+}
+function stopUserLocationMarker() {
+  if (gpsWatchId) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
+  if (userMarker && mapInst) { mapInst.removeLayer(userMarker); userMarker = null; }
+  if (userAccCircle && mapInst) { mapInst.removeLayer(userAccCircle); userAccCircle = null; }
 }
 function openProjectMap() {
   const withCoords = records.filter(r => r.lat && r.lng);
@@ -1486,6 +1517,7 @@ function openProjectMap() {
   // Reuse map modal
   document.getElementById('map-modal').classList.add('open');
   // Reset map
+  stopUserLocationMarker();
   if (mapInst) { mapInst.remove(); mapInst = null; mapReady = false; }
   openMap(); // creates fresh map
   setTimeout(() => {
@@ -1870,6 +1902,7 @@ function newRecord() {
   }
   const btn=document.getElementById('gps-btn');
   btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
+  stopUserLocationMarker();
   if(mapInst) { mapInst.remove(); mapInst = null; }
   mapReady=false;
   clearSlotHighlight();
