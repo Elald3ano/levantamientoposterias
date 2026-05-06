@@ -275,6 +275,9 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
         </label>
       </div>
       <div id="mode-requirements" style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6"></div>
+      <div class="ps-label" style="margin-top:4px">Área de Interés KMZ (opcional)</div>
+      <input type="file" id="proj-kmz" accept=".kmz,.kml" onchange="validateKMZInput()" style="display:block;width:100%;background:var(--input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:10px 12px;outline:none;margin-bottom:6px">
+      <div id="kmz-hint" style="font-size:12px;color:var(--green);margin-bottom:8px;display:none">📁 <span id="kmz-fname"></span> · <span id="kmz-fsize"></span></div>
       <button class="ps-btn" onclick="createProject()">▶ CREAR PROYECTO</button>
     </div>
 
@@ -464,6 +467,20 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
     </div>
   </div>
 
+  <div id="admin-kmz-section" style="display:none">
+    <div class="export-card" style="border-color:var(--accent)">
+      <div class="ec-head" style="color:var(--accent)">📍 Área de Interés (KMZ)</div>
+      <div class="ec-body">
+        <div class="stat-row"><span class="stat-lbl">Estado</span><span class="stat-val" id="kmz-status" style="font-size:14px">—</span></div>
+        <input type="file" id="admin-kmz-input" accept=".kmz,.kml" onchange="adminKMZChanged()" style="display:none">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="document.getElementById('admin-kmz-input').click()" style="flex:1;padding:10px;background:var(--accent);border:none;border-radius:6px;color:#FFFFFF;font-family:'Inter';font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer">📁 Subir KMZ</button>
+          <button onclick="adminDeleteKMZ()" id="kmz-delete-btn" style="flex:1;padding:10px;background:transparent;border:1px solid var(--red);border-radius:6px;color:var(--red);font-family:'Inter';font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;display:none">🗑 Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="sl">Registros</div>
   <input type="search" id="table-filter" placeholder="🔍 Filtrar por poste, UID, dirección..." oninput="filterTable()"
     style="width:100%;background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:15px;padding:9px 11px;outline:none;margin-bottom:8px">
@@ -561,6 +578,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/@tmcw/togeojson@5.8/dist/togeojson.umd.js"></script>
 <script>
 // CanvasRenderingContext2D.roundRect polyfill for older browsers
 if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -602,6 +620,7 @@ let photos      = [null, null, null];
 let uid         = '';
 let mapInst     = null, mapReady = false;
 let userMarker  = null, gpsWatchId = null, userAccCircle = null;
+let layerControl = null, kmzLayerGroup = null;
 let geoAddress  = '';
 let seqNum      = 0;
 let projectMode = 'libre';
@@ -777,6 +796,20 @@ if (document.readyState === 'loading') {
   updateModeUI();
 }
 
+function validateKMZInput() {
+  const file = document.getElementById('proj-kmz').files[0];
+  const hint = document.getElementById('kmz-hint');
+  if (file) {
+    const mb = (file.size / 1048576).toFixed(1);
+    document.getElementById('kmz-fname').textContent = file.name;
+    document.getElementById('kmz-fsize').textContent = mb + ' MB';
+    hint.style.display = 'block';
+    if (mb > 5) showToast('⚠️ El archivo pesa más de 5 MB. Considera simplificarlo.');
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
 async function createProject() {
   const raw = document.getElementById('proj-input').value.trim();
   const code = document.getElementById('proj-code').value.trim().toUpperCase();
@@ -796,10 +829,61 @@ async function createProject() {
   }, { onConflict: 'proyecto_key' });
   if (error) { showToast('Error al crear proyecto: ' + error.message); return; }
 
+  // Subir KMZ si se seleccionó archivo
+  const kmzFile = document.getElementById('proj-kmz').files[0];
+  if (kmzFile) {
+    try { await sbUploadKMZ(kmzFile); showToast('✓ Proyecto creado + KMZ cargado. Código: ' + code); }
+    catch(e) { showToast('✓ Proyecto creado. Código: ' + code + ' (KMZ no se pudo subir)'); }
+  } else {
+    showToast('✓ Proyecto creado. Código: ' + code);
+  }
   localStorage.setItem(`pf_mode_${projectKey}`, projectMode);
-  showToast('✓ Proyecto creado. Código: ' + code);
   document.getElementById('proj-code').value = '';
   await openProject();
+}
+
+// ─── ADMIN KMZ ───────────────────────────────────────────
+async function updateKMZSection() {
+  const section = document.getElementById('admin-kmz-section');
+  if (!section) return;
+  if (!isAdmin) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  const st = document.getElementById('kmz-status');
+  const del = document.getElementById('kmz-delete-btn');
+  try {
+    const exists = await sbCheckKMZ();
+    if (exists) {
+      st.textContent = '✓ Cargado'; st.style.color = 'var(--green)';
+      del.style.display = '';
+    } else {
+      st.textContent = '○ No cargado'; st.style.color = 'var(--muted)';
+      del.style.display = 'none';
+    }
+  } catch (_) {
+    st.textContent = '⚠ Sin conexión'; st.style.color = 'var(--accent)';
+    del.style.display = 'none';
+  }
+}
+async function adminKMZChanged() {
+  const file = document.getElementById('admin-kmz-input').files[0];
+  if (!file) return;
+  const mb = (file.size / 1048576).toFixed(1);
+  if (mb > 5) { showToast('⚠️ Archivo muy grande (' + mb + ' MB). Máx. 5 MB.'); return; }
+  try {
+    await sbUploadKMZ(file);
+    showToast('✓ KMZ ' + file.name + ' subido');
+    updateKMZSection();
+    if (mapInst && mapReady) loadAreaInteres();
+  } catch(e) { showToast('Error al subir KMZ: ' + e.message); }
+}
+async function adminDeleteKMZ() {
+  if (!confirm('¿Eliminar el KMZ de área de interés?')) return;
+  try {
+    await sbDeleteKMZ();
+    clearAreaInteres();
+    showToast('✓ KMZ eliminado');
+    updateKMZSection();
+  } catch(e) { showToast('Error al eliminar: ' + e.message); }
 }
 
 async function startProject(nameOverride) {
@@ -854,6 +938,7 @@ async function openProject() {
   uid = genUID();
   refreshFilenames();
   updateExportPanel();
+  updateKMZSection();
   buildDynUI();
   // Revisar borrador
   const draft = loadDraft();
@@ -1102,6 +1187,8 @@ async function sbSaveRecord(record) {
 }
 
 async function sbDeleteProject(projKey) {
+  // Remove KMZ from storage if exists
+  try { await SB.storage.from(BUCKET_FOTOS).remove([`${projKey}/area_interes.kmz`]); } catch(_) {}
   // Delete photos from storage
   try {
     const { data: files } = await SB.storage.from(BUCKET_FOTOS).list(projKey);
@@ -1114,6 +1201,35 @@ async function sbDeleteProject(projKey) {
   await SB.from('registros').delete().eq('proyecto', projKey);
   // Delete project
   await SB.from('proyectos').delete().eq('proyecto_key', projKey);
+}
+
+// ─── KMZ ──────────────────────────────────────────────
+function kmzPath() { return `${projectKey}/area_interes.kmz`; }
+
+function kmzPublicUrl() {
+  const { data } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(kmzPath());
+  return data?.publicUrl || '';
+}
+
+async function sbCheckKMZ() {
+  try {
+    const resp = await fetch(kmzPublicUrl(), { method: 'HEAD' });
+    return resp.ok;
+  } catch (_) { return false; }
+}
+
+async function sbUploadKMZ(file) {
+  const path = kmzPath();
+  const { error } = await SB.storage.from(BUCKET_FOTOS).upload(path, file, {
+    contentType: file.type || 'application/vnd.google-earth.kmz',
+    upsert: true
+  });
+  if (error) throw error;
+}
+
+async function sbDeleteKMZ() {
+  const { error } = await SB.storage.from(BUCKET_FOTOS).remove([kmzPath()]);
+  if (error) throw error;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1458,7 +1574,7 @@ function openMap() {
         showToast('🗺 Usando mapa OSM (Google no disponible)');
       }
     });
-    L.control.layers({'🛰+🗺 Google Híbrido': gHybrid, '🗺 Calles (OSM)': osm},{},{position:'topright'}).addTo(mapInst);
+    layerControl = L.control.layers({'🛰+🗺 Google Híbrido': gHybrid, '🗺 Calles (OSM)': osm},{},{position:'topright'}).addTo(mapInst);
 
     mapInst.on('move',()=>{
       const c = mapInst.getCenter();
@@ -1472,6 +1588,7 @@ function openMap() {
     mapReady = true;
   }
   startUserLocationMarker();
+  loadAreaInteres();
   setTimeout(()=> mapInst.invalidateSize(), 120);
 }
 function closeMap() {
@@ -1482,6 +1599,7 @@ function closeMap() {
   document.querySelector('.mm-head h3').textContent = '📍 Afinar Ubicación';
   document.querySelector('.mm-head p').textContent = 'Mueve el mapa • el cursor señala el poste exacto';
   stopUserLocationMarker();
+  clearAreaInteres();
 }
 function startUserLocationMarker() {
   stopUserLocationMarker();
@@ -1511,6 +1629,55 @@ function stopUserLocationMarker() {
   if (userMarker && mapInst) { mapInst.removeLayer(userMarker); userMarker = null; }
   if (userAccCircle && mapInst) { mapInst.removeLayer(userAccCircle); userAccCircle = null; }
 }
+function clearAreaInteres() {
+  if (kmzLayerGroup && mapInst) {
+    if (layerControl) layerControl.removeLayer(kmzLayerGroup);
+    mapInst.removeLayer(kmzLayerGroup);
+    kmzLayerGroup = null;
+  }
+}
+async function loadAreaInteres() {
+  clearAreaInteres();
+  if (!projectKey || !mapInst) return;
+  try {
+    const url = kmzPublicUrl();
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    const buffer = await resp.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+    // Buscar primer .kml dentro del .kmz
+    let kmlText = null;
+    for (const [name, file] of Object.entries(zip.files)) {
+      if (file.dir) continue;
+      if (name.toLowerCase().endsWith('.kml')) {
+        kmlText = await file.async('string');
+        break;
+      }
+    }
+    if (!kmlText) return;
+    const parser = new DOMParser();
+    const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+    // togeojson — maneja Point, LineString, Polygon, MultiGeometry
+    const geojson = typeof toGeoJSON !== 'undefined' ? toGeoJSON.kml(kmlDoc) : null;
+    if (!geojson || !geojson.features || !geojson.features.length) return;
+    kmzLayerGroup = L.geoJSON(geojson, {
+      style: feature => ({
+        color: '#0B5FA5', weight: 2, opacity: 0.8,
+        fillColor: '#0B5FA5', fillOpacity: 0.12
+      }),
+      pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+        radius: 6, fillColor: '#0B5FA5', fillOpacity: 0.8,
+        color: '#FFFFFF', weight: 2
+      }),
+      onEachFeature: (feature, layer) => {
+        const props = feature.properties || {};
+        const name = props.name || props.Name || '';
+        if (name) layer.bindTooltip(name, { permanent: false, direction: 'top' });
+      }
+    }).addTo(mapInst);
+    if (layerControl) layerControl.addOverlay(kmzLayerGroup, '📍 Área de Interés');
+  } catch (_) { /* KMZ no disponible o error de parseo — sin capa */ }
+}
 function openProjectMap() {
   const withCoords = records.filter(r => r.lat && r.lng);
   if (!withCoords.length) { showToast('Ningún poste tiene coordenadas aún'); return; }
@@ -1518,7 +1685,8 @@ function openProjectMap() {
   document.getElementById('map-modal').classList.add('open');
   // Reset map
   stopUserLocationMarker();
-  if (mapInst) { mapInst.remove(); mapInst = null; mapReady = false; }
+  clearAreaInteres();
+  if (mapInst) { mapInst.remove(); mapInst = null; mapReady = false; layerControl = null; }
   openMap(); // creates fresh map
   setTimeout(() => {
     if (!mapInst) return;
@@ -1903,7 +2071,8 @@ function newRecord() {
   const btn=document.getElementById('gps-btn');
   btn.className='gps-btn'; btn.textContent='🎯 CAPTURAR POSICIÓN GPS';
   stopUserLocationMarker();
-  if(mapInst) { mapInst.remove(); mapInst = null; }
+  clearAreaInteres();
+  if(mapInst) { mapInst.remove(); mapInst = null; layerControl = null; }
   mapReady=false;
   clearSlotHighlight();
   seqNum = records.length > 0 ? Math.max(...records.map(r => r.seq)) + 1 : 1;
