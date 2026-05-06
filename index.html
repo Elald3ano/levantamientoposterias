@@ -1661,18 +1661,39 @@ async function loadAreaInteres() {
     const geojson = typeof toGeoJSON !== 'undefined' ? toGeoJSON.kml(kmlDoc) : null;
     if (!geojson || !geojson.features || !geojson.features.length) return;
     kmzLayerGroup = L.geoJSON(geojson, {
-      style: feature => ({
-        color: '#0B5FA5', weight: 2, opacity: 0.8,
-        fillColor: '#0B5FA5', fillOpacity: 0.12
-      }),
-      pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-        radius: 6, fillColor: '#0B5FA5', fillOpacity: 0.8,
-        color: '#FFFFFF', weight: 2
-      }),
+      style: feature => {
+        const p = feature.properties || {};
+        return {
+          color: p.stroke || '#0B5FA5',
+          weight: Number(p['stroke-width']) || 2.5,
+          opacity: Number(p['stroke-opacity']) || 0.85,
+          fillColor: p.fill || '#0B5FA5',
+          fillOpacity: Number(p['fill-opacity']) || 0.18
+        };
+      },
+      pointToLayer: (feature, latlng) => {
+        const p = feature.properties || {};
+        if (p.icon) {
+          return L.marker(latlng, {
+            icon: L.icon({ iconUrl: p.icon, iconSize: [28, 28], iconAnchor: [14, 14] })
+          });
+        }
+        return L.circleMarker(latlng, {
+          radius: 7, fillColor: p.fill || '#0B5FA5', fillOpacity: 0.85,
+          color: p.stroke || '#FFFFFF', weight: 2.5
+        });
+      },
       onEachFeature: (feature, layer) => {
-        const props = feature.properties || {};
-        const name = props.name || props.Name || '';
-        if (name) layer.bindTooltip(name, { permanent: false, direction: 'top' });
+        const p = feature.properties || {};
+        const raw = (p.name || '').trim();
+        const desc = (p.description || '').trim();
+        const skip = /^(untitled|sin identificar|sin nombre|unnamed|path|polygon|point|ruta|poligono|punto|linea)$/i;
+        if (raw && raw.length > 1 && !skip.test(raw)) {
+          layer.bindTooltip(raw, { permanent: false, direction: 'top' });
+          if (desc && desc !== raw) {
+            layer.bindPopup(`<div style="max-width:220px;font-size:13px"><b>${raw}</b><br><span style="font-size:12px">${desc}</span></div>`);
+          }
+        }
       }
     }).addTo(mapInst);
     if (layerControl) layerControl.addOverlay(kmzLayerGroup, '📍 Área de Interés');
