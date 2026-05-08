@@ -1170,6 +1170,18 @@ function withTimeout(promise, ms) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function calcularDistancia(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = (v) => v * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // ═══════════════════════════════════════════════════
 // FORM UTILS — read/write form fields in batch
 // ═══════════════════════════════════════════════════
@@ -1911,6 +1923,29 @@ function confirmMapCoord() {
   const c   = mapInst.getCenter();
   const lat = c.lat.toFixed(7);
   const lng = c.lng.toFixed(7);
+
+  // Validar distancia al GPS del dispositivo si está disponible
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const d = calcularDistancia(
+        parseFloat(lat), parseFloat(lng),
+        pos.coords.latitude, pos.coords.longitude
+      );
+      if (d > 100) {
+        if (!confirm(`⚠️ La coordenada seleccionada está a ${Math.round(d)} m de tu posición GPS actual.\n\n¿Estás seguro de que el poste está en esa ubicación?`)) return;
+      }
+      applyMapCoord(lat, lng);
+    }, () => {
+      // GPS no disponible — aceptar sin validación
+      applyMapCoord(lat, lng);
+    }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 });
+    return;
+  }
+
+  applyMapCoord(lat, lng);
+}
+
+function applyMapCoord(lat, lng) {
   document.getElementById('f-lat').value = lat;
   document.getElementById('f-lng').value = lng;
   document.getElementById('gps-acc').textContent = `Coordenada del mapa — consultando ubicación...`;
