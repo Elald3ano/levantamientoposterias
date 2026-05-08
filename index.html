@@ -1931,7 +1931,7 @@ function confirmMapCoord() {
         parseFloat(lat), parseFloat(lng),
         pos.coords.latitude, pos.coords.longitude
       );
-      if (d > 50) {
+      if (d > 30) {
         if (!confirm(`⚠️ La coordenada seleccionada está a ${Math.round(d)} m de tu posición GPS actual.\n\n¿Estás seguro de que el poste está en esa ubicación?`)) return;
       }
       applyMapCoord(lat, lng);
