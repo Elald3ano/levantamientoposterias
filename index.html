@@ -2668,7 +2668,7 @@ function renderR(){
       <div class="ri-meta" style="font-size:12px;margin-top:2px">
         ${r.lat?`📍 ${parseFloat(r.lat).toFixed(5)}, ${parseFloat(r.lng).toFixed(5)}`:'📍 Sin coord'}
         · ${[r.foto1,r.foto2,r.foto3].filter(Boolean).length} fotos
-        · ${escHtml(r.fecha)}
+        · ${escHtml(r.fecha)} ${escHtml(r.hora||'')}
       </div>
     </div>`).join('');
 }
