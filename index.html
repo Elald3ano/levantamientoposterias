@@ -963,7 +963,7 @@ async function loadPrevProjects() {
   }
 
   try {
-    const { data, error } = await SB.from('proyectos').select('*').order('creado', { ascending: false });
+    const { data, error } = await SB.from('proyectos').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     if (!data || !data.length) {
       sec.style.display = 'none';
