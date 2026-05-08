@@ -2165,6 +2165,13 @@ async function saveAndExport() {
     const photosTaken = photos.filter(Boolean).length;
     if (photosTaken < 3) missing.push(`Fotos (${photosTaken}/3)`);
   }
+  if (projectMode !== 'estricto') {
+    const photosTaken = photos.filter(Boolean).length;
+    if (photosTaken === 0) {
+      showToast('Debes tomar al menos una foto en modo libre.', 'warning');
+      return;
+    }
+  }
   if (missing.length) {
     showToast(`⚠️ Faltan: ${missing.join(', ')}`);
     return;
