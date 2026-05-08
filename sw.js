@@ -14,7 +14,7 @@ const ASSETS = [
 ];
 
 const TILE_HOSTS = [
-  'tiles.stadiamaps.com',
+  'server.arcgisonline.com',
   'basemaps.cartocdn.com',
   'tile.openstreetmap.org'
 ];
