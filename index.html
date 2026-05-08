@@ -963,10 +963,7 @@ async function loadPrevProjects() {
   }
 
   try {
-      const { data, error } = await withTimeout(
-        SB.from('proyectos').select('*').order('creado', { ascending: false }),
-        CONFIG.NETWORK_TIMEOUT_QUERY
-      );
+    const { data, error } = await SB.from('proyectos').select('*').order('creado', { ascending: false }).limit(500);
     if (error) throw error;
     if (!data || !data.length) {
       sec.style.display = 'none';
