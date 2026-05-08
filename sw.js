@@ -1,5 +1,5 @@
 const CACHE = 'posteapp-v3';
-const TILE_CACHE = 'posteapp-tiles-v1';
+const TILE_CACHE = 'posteapp-tiles-v2';
 const ASSETS = [
   'icon.svg',
   'manifest.json',
@@ -54,20 +54,17 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-first para tiles de mapa — se guardan al navegar y sirven offline
+  // Network-first para tiles — evita servir tiles corruptos de caché
   if (isTileRequest(url)) {
     e.respondWith(
-      caches.open(TILE_CACHE).then(cache =>
-        cache.match(e.request).then(cached => {
-          const fetched = fetch(e.request).then(res => {
-            if (res && res.ok) {
-              cache.put(e.request, res.clone());
-            }
-            return res;
-          }).catch(() => cached);
-          return cached || fetched;
-        })
-      )
+      caches.open(TILE_CACHE).then(cache => {
+        return fetch(e.request).then(res => {
+          if (res && res.status === 200) {
+            cache.put(e.request, res.clone());
+          }
+          return res;
+        }).catch(() => cache.match(e.request));
+      })
     );
     return;
   }
