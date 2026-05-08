@@ -1714,9 +1714,9 @@ function openMap() {
     const lng0 = parseFloat(document.getElementById('f-lng').value) || -74.1;
     mapInst = L.map('mmap',{zoomControl:true,attributionControl:false}).setView([lat0,lng0],18);
 
-    // ESRI World Imagery (satélite) — alta resolución global
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}', {
-      maxZoom:19, attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics'
+    // USGS National Map Imagery (satélite) — gratuito, sin token, alta resolución
+    const satelliteLayer = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom:19, attribution:'Tiles © USGS — The National Map'
     });
     // CartoDB Positron — solo etiquetas (calles y nombres)
     const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
@@ -1734,12 +1734,12 @@ function openMap() {
         mapInst.removeLayer(satelliteLayer);
         mapInst.removeLayer(labelsLayer);
         osmFallback.addTo(mapInst);
-        showToast('🗺 Usando mapa OSM (ESRI no disponible)');
+        showToast('🗺 Usando mapa OSM (USGS no disponible)');
       }
     });
     labelsLayer.addTo(mapInst);
     layerControl = L.control.layers(
-      {'🛰 ESRI Satélite': satelliteLayer, '🗺 Calles (OSM)': osmFallback},
+      {'🛰 USGS Satélite': satelliteLayer, '🗺 Calles (OSM)': osmFallback},
       {'🏷 Etiquetas': labelsLayer},
       {position:'topright'}
     ).addTo(mapInst);
