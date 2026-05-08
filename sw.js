@@ -14,7 +14,7 @@ const ASSETS = [
 ];
 
 const TILE_HOSTS = [
-  'basemap.nationalmap.gov',
+  'tiles.stadiamaps.com',
   'basemaps.cartocdn.com',
   'tile.openstreetmap.org'
 ];
