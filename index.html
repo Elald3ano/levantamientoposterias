@@ -1384,7 +1384,9 @@ const OFFLINE_KEY_PREFIX = 'pf_offline_';
 function saveToOfflineQueue(record) {
   const key = OFFLINE_KEY_PREFIX + projectKey;
   const queue = JSON.parse(localStorage.getItem(key) || '[]');
-  queue.push(record);
+  // Strip b64 de _photos — ya están en IndexedDB, no duplicar en localStorage
+  const slimRecord = { ...record, _photos: (record._photos || []).map(p => ({ name: p.name, url: p.url || '' })) };
+  queue.push(slimRecord);
   if (!safeSetItem(key, JSON.stringify(queue))) {
     showToast('⚠️ Almacenamiento local lleno — libera espacio o sincroniza', 'error');
   }
