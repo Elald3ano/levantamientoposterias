@@ -639,7 +639,7 @@ function initApp() {
 }
 
 function resetActivityTimer() {
-  if (accessCode) localStorage.setItem('pf_access_ts', Date.now());
+  if (accessCode) safeSetItem('pf_access_ts', Date.now());
 }
 // Escuchar interacción del usuario
 ['click','keypress','touchstart','scroll'].forEach(ev =>
@@ -676,8 +676,8 @@ async function verifyCode() {
   if (input === ADMIN_CODE) {
   isAdmin = true;
   accessCode = input;
-  localStorage.setItem('pf_access_code', input);
-  localStorage.setItem('pf_access_ts', Date.now());
+  safeSetItem('pf_access_code', input);
+  safeSetItem('pf_access_ts', Date.now());
     document.getElementById('access-section').style.display = 'none';
     document.getElementById('ps-create-section').style.display = 'block';
     document.getElementById('ps-sub').textContent = '🔑 Modo administrador. Crea y gestiona proyectos.';
@@ -712,8 +712,8 @@ async function verifyCode() {
 
   isAdmin = false;
   accessCode = input;
-  localStorage.setItem('pf_access_code', input);
-  localStorage.setItem('pf_access_ts', Date.now());
+  safeSetItem('pf_access_code', input);
+  safeSetItem('pf_access_ts', Date.now());
   document.getElementById('access-section').style.display = 'none';
   document.getElementById('ps-create-section').style.display = 'none';
   document.getElementById('ps-sub').textContent = '';
@@ -807,7 +807,7 @@ async function createProject() {
   } else {
     showToast('✓ Proyecto creado. Código: ' + code);
   }
-  localStorage.setItem(`pf_mode_${projectKey}`, projectMode);
+  safeSetItem(`pf_mode_${projectKey}`, projectMode);
   document.getElementById('proj-code').value = '';
   await openProject();
 }
@@ -945,12 +945,12 @@ async function loadPrevProjects() {
       sec.style.display = 'none';
       statusEl.textContent = isAdmin ? '☁️ Sin proyectos — crea el primero' : '';
       statusEl.style.color = 'var(--muted)';
-      localStorage.setItem('pf_projects_cache', '[]');
+      safeSetItem('pf_projects_cache', '[]');
       return;
     }
 
     // Cachear proyectos para uso offline
-    localStorage.setItem('pf_projects_cache', JSON.stringify(data));
+    safeSetItem('pf_projects_cache', JSON.stringify(data));
 
     sec.style.display = 'block';
     title.textContent = isAdmin ? 'Todos los proyectos' : 'Proyecto';
@@ -1048,7 +1048,7 @@ async function deleteProject(projKey, projName) {
     // Limpiar caché de proyectos
     try {
       const cache = JSON.parse(localStorage.getItem('pf_projects_cache') || '[]');
-      localStorage.setItem('pf_projects_cache', JSON.stringify(cache.filter(p => p.proyecto_key !== projKey)));
+      safeSetItem('pf_projects_cache', JSON.stringify(cache.filter(p => p.proyecto_key !== projKey)));
     } catch(_) {}
 
     showToast('✓ Proyecto eliminado');
@@ -1108,6 +1108,32 @@ function goTo(step) {
   if(step===3) updateExportPanel();
 }
 
+
+// ═══════════════════════════════════════════════════
+// UTIL — localStorage con manejo de QuotaExceededError
+// ═══════════════════════════════════════════════════
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || String(e).toLowerCase().includes('quota')) {
+      console.warn('QuotaExceededError: intentando liberar espacio...');
+      try {
+        const keys = Object.keys(localStorage).filter(k =>
+          k.startsWith('pf_projects_cache') || k.startsWith('pf_draft_')
+        );
+        keys.forEach(k => { if (k !== key) localStorage.removeItem(k); });
+        localStorage.setItem(key, value);
+        return true;
+      } catch (e2) {
+        console.error('No se pudo liberar espacio en localStorage');
+        return false;
+      }
+    }
+    throw e;
+  }
+}
 
 // ═══════════════════════════════════════════════════
 // FORM UTILS — read/write form fields in batch
@@ -1310,7 +1336,9 @@ function saveToOfflineQueue(record) {
   const key = OFFLINE_KEY_PREFIX + projectKey;
   const queue = JSON.parse(localStorage.getItem(key) || '[]');
   queue.push(record);
-  localStorage.setItem(key, JSON.stringify(queue));
+  if (!safeSetItem(key, JSON.stringify(queue))) {
+    showToast('⚠️ Almacenamiento local lleno — libera espacio o sincroniza', 'error');
+  }
 }
 
 async function syncOfflineQueue() {
@@ -1343,7 +1371,7 @@ async function syncOfflineQueue() {
     }
   }
   if (remaining.length) {
-    localStorage.setItem(key, JSON.stringify(remaining));
+    safeSetItem(key, JSON.stringify(remaining));
     if (remaining.length < queue.length) {
       showToast(`☁️ ${queue.length - remaining.length} sincronizado(s) · ${remaining.length} pendiente(s)`);
     }
@@ -1411,7 +1439,9 @@ function saveDraft() {
       value: valEl ? valEl.value || '0' : '0'
     };
   });
-  localStorage.setItem(`pf_draft_${projectKey}`, JSON.stringify(draft));
+  if (!safeSetItem(`pf_draft_${projectKey}`, JSON.stringify(draft))) {
+    console.warn('No se pudo guardar borrador — localStorage lleno');
+  }
 }
 
 function loadDraft() {
