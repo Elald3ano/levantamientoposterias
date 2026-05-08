@@ -1747,6 +1747,23 @@ function openMap() {
   }
   startUserLocationMarker();
   loadAreaInteres();
+  // Mostrar registros existentes como puntos de referencia sutiles
+  if (mapInst._existingRecordLayer) mapInst.removeLayer(mapInst._existingRecordLayer);
+  if (records.length > 0) {
+    const existingMarkers = records.filter(r => r.lat && r.lng).map(r =>
+      L.circleMarker([parseFloat(r.lat), parseFloat(r.lng)], {
+        radius: 6,
+        fillColor: '#0B5FA5',
+        color: '#FFFFFF',
+        weight: 1,
+        opacity: 0.7,
+        fillOpacity: 0.4
+      })
+    );
+    if (existingMarkers.length) {
+      mapInst._existingRecordLayer = L.layerGroup(existingMarkers).addTo(mapInst);
+    }
+  }
   setTimeout(()=> mapInst.invalidateSize(), CONFIG.MAP_INVALIDATE_DELAY);
 }
 function closeMap() {
