@@ -399,7 +399,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
   </div>
   <div class="btn-row">
     <button class="btn btn-s" onclick="goTo(1)" style="flex:.5">← VOLVER</button>
-    <button class="btn btn-p" onclick="saveAndExport()">✓ GUARDAR Y SIGUIENTE POSTE</button>
+    <button class="btn btn-p" id="save-btn" onclick="saveAndExport()">✓ GUARDAR Y SIGUIENTE POSTE</button>
   </div>
 </div>
 
@@ -2107,6 +2107,14 @@ function rmFoto(e,i) {
 // SAVE RECORD
 // ═══════════════════════════════════════════════════
 async function saveAndExport() {
+  // ── Protección contra doble envío ─────────────────────
+  if (saveAndExport._saving) return;
+  saveAndExport._saving = true;
+
+  const btn = document.getElementById('save-btn');
+
+  try {
+
   const now = new Date();
   const lat = document.getElementById('f-lat').value;
   const lng = document.getElementById('f-lng').value;
@@ -2141,6 +2149,10 @@ async function saveAndExport() {
   if (records.some(r => r.n_poste && r.n_poste.toLowerCase() === nPoste.toLowerCase())) {
     if (!confirm(`⚠️ El poste "${nPoste}" ya existe en este proyecto.\n\n¿Guardar de todas formas?`)) return;
   }
+
+  // ── Bloquear UI durante el guardado ───────────────────
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ GUARDANDO...'; }
+  showLoading('Guardando poste...');
 
   // ── Esperar uploads de fotos ─────────────────────────
   await Promise.allSettled(photos.filter(Boolean).map(p => {
@@ -2188,6 +2200,11 @@ async function saveAndExport() {
     records.push(record);
     showToast(`⚠️ Sin conexión — guardado local. Se sincronizará al reconectar.`);
     newRecord();
+  }
+  } finally {
+    hideLoading();
+    if (btn) { btn.disabled = false; btn.textContent = '✓ GUARDAR Y SIGUIENTE POSTE'; }
+    saveAndExport._saving = false;
   }
 }
 
