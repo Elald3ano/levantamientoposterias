@@ -1714,25 +1714,35 @@ function openMap() {
     const lng0 = parseFloat(document.getElementById('f-lng').value) || -74.1;
     mapInst = L.map('mmap',{zoomControl:true,attributionControl:false}).setView([lat0,lng0],18);
 
-    // Google Hybrid (satélite + etiquetas) — mejor resolución en Latinoamérica
-    const gHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-      maxZoom:21, attribution:'© Google',
-      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    // ESRI World Imagery (satélite) — alta resolución global
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}', {
+      maxZoom:19, attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics'
     });
-    // OSM como capa de respaldo
-    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // CartoDB Positron — solo etiquetas (calles y nombres)
+    const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+      attribution:'© OpenStreetMap contributors, © CartoDB',
+      subdomains:'abcd', maxZoom:19
+    });
+    // OSM como capa de respaldo si ESRI no responde
+    const osmFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom:19, attribution:'© OpenStreetMap'
     });
-    // Intentar Google, detectar si falla y cambiar a OSM
-    gHybrid.addTo(mapInst);
-    gHybrid.on('tileerror', () => {
-      if(mapInst.hasLayer(gHybrid)) {
-        mapInst.removeLayer(gHybrid);
-        osm.addTo(mapInst);
-        showToast('🗺 Usando mapa OSM (Google no disponible)');
+
+    satelliteLayer.addTo(mapInst);
+    satelliteLayer.on('tileerror', () => {
+      if(mapInst.hasLayer(satelliteLayer)) {
+        mapInst.removeLayer(satelliteLayer);
+        mapInst.removeLayer(labelsLayer);
+        osmFallback.addTo(mapInst);
+        showToast('🗺 Usando mapa OSM (ESRI no disponible)');
       }
     });
-    layerControl = L.control.layers({'🛰+🗺 Google Híbrido': gHybrid, '🗺 Calles (OSM)': osm},{},{position:'topright'}).addTo(mapInst);
+    labelsLayer.addTo(mapInst);
+    layerControl = L.control.layers(
+      {'🛰 ESRI Satélite': satelliteLayer, '🗺 Calles (OSM)': osmFallback},
+      {'🏷 Etiquetas': labelsLayer},
+      {position:'topright'}
+    ).addTo(mapInst);
 
     mapInst.on('move',()=>{
       const c = mapInst.getCenter();

@@ -1,4 +1,5 @@
-const CACHE = 'posteapp-v2';
+const CACHE = 'posteapp-v3';
+const TILE_CACHE = 'posteapp-tiles-v1';
 const ASSETS = [
   'icon.svg',
   'manifest.json',
@@ -12,6 +13,12 @@ const ASSETS = [
   'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap'
 ];
 
+const TILE_HOSTS = [
+  'server.arcgisonline.com',
+  'basemaps.cartocdn.com',
+  'tile.openstreetmap.org'
+];
+
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(ASSETS).catch(() => {}))
@@ -22,15 +29,20 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      keys.filter(k => k !== CACHE && k !== TILE_CACHE).map(k => caches.delete(k))
     ))
   );
   self.clients.claim();
 });
 
+function isTileRequest(url) {
+  return TILE_HOSTS.some(host => url.hostname === host);
+}
+
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Network-first para index.html (siempre cargar versión más reciente)
+
+  // Network-first para index.html
   if (url.pathname.endsWith('/') || url.pathname.endsWith('index.html')) {
     e.respondWith(
       fetch(e.request).then(res => {
@@ -41,6 +53,25 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
+
+  // Cache-first para tiles de mapa — se guardan al navegar y sirven offline
+  if (isTileRequest(url)) {
+    e.respondWith(
+      caches.open(TILE_CACHE).then(cache =>
+        cache.match(e.request).then(cached => {
+          const fetched = fetch(e.request).then(res => {
+            if (res && res.ok) {
+              cache.put(e.request, res.clone());
+            }
+            return res;
+          }).catch(() => cached);
+          return cached || fetched;
+        })
+      )
+    );
+    return;
+  }
+
   // Cache-first para el resto (CDN, assets)
   e.respondWith(
     caches.match(e.request).then(cached => {
