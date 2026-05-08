@@ -182,6 +182,14 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
 .toast.error{background:var(--red)}
 .toast.warning{background:var(--accent)}
 
+/* ── LOADING OVERLAY ── */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:9999;align-items:center;justify-content:center}
+.loading-overlay.open{display:flex}
+.loading-box{background:var(--surface);padding:24px 32px;border-radius:12px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.15)}
+.loading-spinner{width:36px;height:36px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--text);font-weight:500;margin:0;font-size:15px}
+
 /* MAP TILES */
 .leaflet-container{background:#F0F0F0!important}
 #mmap .leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border-color:var(--border)!important}
@@ -414,7 +422,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
       <div class="ec-head" style="color:var(--accent)">⏳ Pendientes de sincronizar</div>
       <div class="ec-body">
         <div class="stat-row"><span class="stat-lbl">Registros sin subir</span><span class="stat-val warn" id="offline-count">0</span></div>
-        <button onclick="syncOfflineQueue()" style="margin-top:8px;width:100%;padding:10px;background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Inter';font-size:14px;font-weight:700;letter-spacing:1.5px;cursor:pointer">↻ SINCRONIZAR AHORA</button>
+        <button id="sync-btn" onclick="syncOfflineQueue()" style="margin-top:8px;width:100%;padding:10px;background:var(--accent);border:none;border-radius:6px;color:var(--bg);font-family:'Inter';font-size:14px;font-weight:700;letter-spacing:1.5px;cursor:pointer">↻ SINCRONIZAR AHORA</button>
       </div>
     </div>
   </div>
@@ -523,6 +531,13 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
   <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">
     <button class="btn btn-g" onclick="exportZIP();closeR()">📦 DESCARGAR ZIP</button>
     <button class="btn" onclick="clearAll()" style="background:rgba(183,28,28,.06);border:1px solid rgba(183,28,28,.2);color:var(--red)">🗑 Borrar registros</button>
+  </div>
+</div>
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <p class="loading-text" id="loading-text">Sincronizando...</p>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1341,8 +1356,60 @@ function saveToOfflineQueue(record) {
   }
 }
 
+function showLoading(msg) {
+  const ov = document.getElementById('loading-overlay');
+  const txt = document.getElementById('loading-text');
+  if (ov) ov.classList.add('open');
+  if (txt) txt.textContent = msg || 'Sincronizando...';
+}
+
+function hideLoading() {
+  const ov = document.getElementById('loading-overlay');
+  if (ov) ov.classList.remove('open');
+}
+
+function actualizarBotonSync() {
+  const btn = document.getElementById('sync-btn');
+  const box = document.getElementById('offline-queue-box');
+  const countEl = document.getElementById('offline-count');
+  if (!btn || !box) return;
+
+  let count = 0;
+  let corrupted = false;
+  try {
+    count = getOfflineCount();
+  } catch (e) {
+    corrupted = true;
+    count = 0;
+  }
+
+  if (corrupted) {
+    box.style.display = 'block';
+    btn.textContent = '⚠️ Cola dañada';
+    btn.disabled = false;
+    btn.style.cursor = 'pointer';
+    btn.onclick = () => showToast('La cola de sincronización está dañada. Intenta exportar los datos manualmente desde la sección Exportar.', 'error');
+    if (countEl) countEl.textContent = '—';
+    return;
+  }
+
+  btn.onclick = syncOfflineQueue;
+
+  if (count > 0) {
+    box.style.display = 'block';
+    btn.textContent = `↻ Sincronizar (${count})`;
+    btn.disabled = false;
+    btn.style.cursor = 'pointer';
+    if (countEl) countEl.textContent = count;
+  } else {
+    box.style.display = 'none';
+    if (countEl) countEl.textContent = '0';
+  }
+}
+
 async function syncOfflineQueue() {
   if (!projectKey) return;
+  const btn = document.getElementById('sync-btn');
 
   // Retry pending photo uploads from IndexedDB
   try {
@@ -1356,36 +1423,74 @@ async function syncOfflineQueue() {
   } catch(e) { /* IndexedDB might not be available */ }
 
   const key = OFFLINE_KEY_PREFIX + projectKey;
-  const raw = localStorage.getItem(key);
-  if (!raw) return;
-  const queue = JSON.parse(raw);
-  if (!queue.length) return;
+  let raw;
+  try {
+    raw = localStorage.getItem(key);
+  } catch (e) { raw = null; }
+  if (!raw) { updateExportPanel(); return; }
 
-  showToast(`⏳ Sincronizando ${queue.length} registro(s) pendiente(s)...`);
+  let queue;
+  try {
+    queue = JSON.parse(raw);
+  } catch (e) {
+    showToast('⚠️ La cola de sincronización está dañada. Exporta manualmente.', 'error');
+    return;
+  }
+  if (!queue || !queue.length) { updateExportPanel(); return; }
+
+  // ── Setup ──
+  if (btn) { btn.disabled = true; btn.style.cursor = 'wait'; }
+  showLoading(`Sincronizando 0 de ${queue.length} registros...`);
+
+  const total = queue.length;
   const remaining = [];
-  for (const record of queue) {
+  let synced = 0;
+
+  for (let i = 0; i < total; i++) {
+    const record = queue[i];
     try {
       await sbSaveRecord(record);
+      synced++;
     } catch(e) {
       remaining.push(record);
     }
+    // Update overlay progress
+    const txt = document.getElementById('loading-text');
+    if (txt) txt.textContent = `Sincronizando... (${synced} de ${total})`;
   }
+
+  // ── Finalizar ──
+  hideLoading();
+  if (btn) { btn.disabled = false; btn.style.cursor = 'pointer'; }
+
   if (remaining.length) {
-    safeSetItem(key, JSON.stringify(remaining));
-    if (remaining.length < queue.length) {
-      showToast(`☁️ ${queue.length - remaining.length} sincronizado(s) · ${remaining.length} pendiente(s)`);
+    if (!safeSetItem(key, JSON.stringify(remaining))) {
+      showToast('⚠️ No se pudo guardar la cola — almacenamiento lleno', 'error');
+    }
+    if (synced > 0) {
+      showToast(`☁️ Sincronización parcial: ${synced} enviados, ${remaining.length} pendientes`);
+    } else {
+      showToast(`⚠️ Sincronización falló. Quedan ${remaining.length} pendientes.`, 'error');
     }
   } else {
     localStorage.removeItem(key);
-    showToast(`☁️ Todos los registros sincronizados ✓`);
+    showToast(`☁️ Sincronización completada: ${synced} enviados ✓`);
   }
   updateExportPanel();
+  actualizarBotonSync();
 }
 
 function getOfflineCount() {
   if (!projectKey) return 0;
-  const raw = localStorage.getItem(OFFLINE_KEY_PREFIX + projectKey);
-  return raw ? JSON.parse(raw).length : 0;
+  let raw;
+  try {
+    raw = localStorage.getItem(OFFLINE_KEY_PREFIX + projectKey);
+  } catch (e) { throw e; }
+  if (!raw) return 0;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.length : 0;
+  } catch (e) { throw new Error('Cola corrupta'); }
 }
 
 // ── CONECTIVIDAD ───────────────────────────────────────────────
@@ -1397,7 +1502,7 @@ function updateConnDot() {
 window.addEventListener('online', () => {
   updateConnDot();
   showToast('🌐 Conexión restaurada — sincronizando...');
-  syncOfflineQueue();
+  syncOfflineQueue().then(() => actualizarBotonSync());
 });
 
 window.addEventListener('offline', () => {
@@ -2266,12 +2371,7 @@ function updateExportPanel() {
   setEl('ep-photos', `${photoCount} subidas`);
 
   // Offline queue
-  const offCount = getOfflineCount();
-  const offBox = document.getElementById('offline-queue-box');
-  if (offBox) {
-    offBox.style.display = offCount > 0 ? 'block' : 'none';
-    setEl('offline-count', offCount);
-  }
+  actualizarBotonSync();
 
   // CSV preview
   const csvStr = buildCSV();
