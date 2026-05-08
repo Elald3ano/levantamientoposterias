@@ -1716,7 +1716,9 @@ function openMap() {
 
     // ESRI World Imagery (satélite) — gratuito, sin token, probado en Colombia
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom:19, attribution:'Tiles \u00A9 Esri — Source: Esri, Maxar, Earthstar Geographics'
+      maxZoom:19,
+      attribution:'Tiles \u00A9 Esri — Source: Esri, Maxar, Earthstar Geographics',
+      errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
     });
     // CartoDB Positron — solo etiquetas (calles y nombres)
     const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
@@ -1729,14 +1731,6 @@ function openMap() {
     });
 
     satelliteLayer.addTo(mapInst);
-    satelliteLayer.on('tileerror', () => {
-      if(mapInst.hasLayer(satelliteLayer)) {
-        mapInst.removeLayer(satelliteLayer);
-        mapInst.removeLayer(labelsLayer);
-        osmFallback.addTo(mapInst);
-        showToast('\uD83D\uDDFA Usando mapa OSM (sat\u00E9lite no disponible)');
-      }
-    });
     labelsLayer.addTo(mapInst);
     layerControl = L.control.layers(
       {'\uD83D\uDEF0 ESRI Sat\u00E9lite': satelliteLayer, '\uD83D\uDDFA Calles (OSM)': osmFallback},
