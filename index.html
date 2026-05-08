@@ -623,6 +623,9 @@ const CONFIG = {
   DRAFT_AUTO_SAVE_INTERVAL: 30000,
   KMZ_MAX_MB: 5,
   SYNC_INITIAL_DELAY: 1500,
+  NETWORK_TIMEOUT_SAVE: 20000,
+  NETWORK_TIMEOUT_QUERY: 15000,
+  NETWORK_TIMEOUT_UPLOAD: 25000,
 };
 
 function initApp() {
@@ -707,7 +710,10 @@ async function verifyCode() {
   let data = null;
   if (SB) {
     try {
-      const res = await SB.from('proyectos').select('*').eq('codigo_acceso', input).eq('activo', true).single();
+      const res = await withTimeout(
+        SB.from('proyectos').select('*').eq('codigo_acceso', input).eq('activo', true).single(),
+        CONFIG.NETWORK_TIMEOUT_QUERY
+      );
       if (!res.error) data = res.data;
     } catch (e) { /* offline — buscar en caché */ }
   }
@@ -805,13 +811,16 @@ async function createProject() {
   updateModeUI();
 
   // Guardar en tabla proyectos
-  const { error } = await SB.from('proyectos').upsert({
-    proyecto_key: projectKey,
-    nombre: projectName,
-    codigo_acceso: code,
-    modo: projectMode,
-    activo: true
-  }, { onConflict: 'proyecto_key' });
+  const { error } = await withTimeout(
+    SB.from('proyectos').upsert({
+      proyecto_key: projectKey,
+      nombre: projectName,
+      codigo_acceso: code,
+      modo: projectMode,
+      activo: true
+    }, { onConflict: 'proyecto_key' }),
+    CONFIG.NETWORK_TIMEOUT_SAVE
+  );
   if (error) { showToast('Error al crear proyecto: ' + error.message); return; }
 
   // Subir KMZ si se seleccionó archivo
@@ -954,7 +963,10 @@ async function loadPrevProjects() {
   }
 
   try {
-      const { data, error } = await SB.from('proyectos').select('*').order('creado', { ascending: false });
+      const { data, error } = await withTimeout(
+        SB.from('proyectos').select('*').order('creado', { ascending: false }),
+        CONFIG.NETWORK_TIMEOUT_QUERY
+      );
     if (error) throw error;
     if (!data || !data.length) {
       sec.style.display = 'none';
@@ -1150,6 +1162,14 @@ function safeSetItem(key, value) {
   }
 }
 
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('TIMEOUT')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // ═══════════════════════════════════════════════════
 // FORM UTILS — read/write form fields in batch
 // ═══════════════════════════════════════════════════
@@ -1187,10 +1207,12 @@ async function sbUploadPhoto(b64, filename) {
   const blob = new Blob([bytes], {type:'image/jpeg'});
 
   const path = `${projectKey}/${filename}`;
-  const { data, error } = await SB.storage.from(BUCKET_FOTOS).upload(path, blob, {
-    contentType: 'image/jpeg',
-    upsert: true
-  });
+  const { data, error } = await withTimeout(
+    SB.storage.from(BUCKET_FOTOS).upload(path, blob, {
+      contentType: 'image/jpeg',
+      upsert: true
+    }), CONFIG.NETWORK_TIMEOUT_UPLOAD
+  );
   if (error) throw error;
 
   const { data: { publicUrl } } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
@@ -1252,7 +1274,7 @@ function kmzPublicUrl() {
 
 async function sbCheckKMZ() {
   try {
-    const resp = await fetch(kmzPublicUrl(), { method: 'HEAD' });
+    const resp = await withTimeout(fetch(kmzPublicUrl(), { method: 'HEAD' }), CONFIG.NETWORK_TIMEOUT_QUERY);
     return resp.ok;
   } catch (_) { return false; }
 }
@@ -1416,7 +1438,7 @@ async function syncOfflineQueue() {
     const pendingPhotos = await idbGetPendingPhotos();
     for (const p of pendingPhotos) {
       try {
-        await sbUploadPhoto(p.b64, p.name);
+        await withTimeout(sbUploadPhoto(p.b64, p.name), CONFIG.NETWORK_TIMEOUT_UPLOAD);
         await idbMarkUploaded(p.name);
       } catch(e) { /* retry next time */ }
     }
@@ -1449,7 +1471,7 @@ async function syncOfflineQueue() {
   for (let i = 0; i < total; i++) {
     const record = queue[i];
     try {
-      await sbSaveRecord(record);
+    await withTimeout(sbSaveRecord(record), CONFIG.NETWORK_TIMEOUT_SAVE);
       synced++;
     } catch(e) {
       remaining.push(record);
@@ -1619,7 +1641,10 @@ function clearDraft() {
 
 async function reverseGeocode(lat, lng) {
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`);
+    const r = await withTimeout(
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`),
+      CONFIG.NETWORK_TIMEOUT_QUERY
+    );
     const data = await r.json();
     const a = data.address || {};
     const partes = [
@@ -1774,9 +1799,9 @@ async function loadAreaInteres() {
   if (!projectKey || !mapInst) return;
   try {
     const url = kmzPublicUrl();
-    const resp = await fetch(url);
+    const resp = await withTimeout(fetch(url), CONFIG.NETWORK_TIMEOUT_QUERY);
     if (!resp.ok) return;
-    const buffer = await resp.arrayBuffer();
+    const buffer = await withTimeout(resp.arrayBuffer(), CONFIG.NETWORK_TIMEOUT_QUERY);
     const zip = await JSZip.loadAsync(buffer);
     // Buscar primer .kml dentro del .kmz
     let kmlText = null;
@@ -2189,7 +2214,7 @@ async function saveAndExport() {
 
   // ── Guardar en Supabase ──────────────────────────────
   try {
-    await sbSaveRecord(record);
+      await withTimeout(sbSaveRecord(record), CONFIG.NETWORK_TIMEOUT_SAVE);
     records.push(record);
     clearDraft();
     showToast(`✓ ${uid} guardado · ${records.length} postes`);
@@ -2432,7 +2457,7 @@ async function exportZIP() {
         fotos.file(p.name, b64data, { base64: true });
       } else if (p.url) {
         try {
-          const resp = await fetch(p.url);
+          const resp = await withTimeout(fetch(p.url), CONFIG.NETWORK_TIMEOUT_UPLOAD);
           const blob = await resp.blob();
           fotos.file(p.name, blob);
         } catch(e) {
@@ -2443,7 +2468,7 @@ async function exportZIP() {
         const path = `${projectKey}/${p.name}`;
         const { data } = SB.storage.from(BUCKET_FOTOS).getPublicUrl(path);
         try {
-          const resp = await fetch(data.publicUrl);
+          const resp = await withTimeout(fetch(data.publicUrl), CONFIG.NETWORK_TIMEOUT_UPLOAD);
           if (resp.ok) {
             const blob = await resp.blob();
             fotos.file(p.name, blob);
