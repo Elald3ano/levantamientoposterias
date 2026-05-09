@@ -3,11 +3,20 @@ import { state, CONFIG, SESSION_TIMEOUT, DYNAMIC_FIELDS, DYN_IDS, CSV_COLS, CSV_
 import { SB, BUCKET_FOTOS, SUPABASE_URL, SUPABASE_KEY, withTimeout, sbUploadPhoto, sbSaveRecord, sbDeleteProject, sbUploadKMZ, loadAdminCode, sbGetMaxSeq } from './api/supabase.js';
 import { captureGPS, autoCaptureGPS, openMap, closeMap, confirmMapCoord, openProjectMap, updateKMZSection, adminKMZChanged, adminDeleteKMZ, stopUserLocationMarker, clearAreaInteres } from './services/map.js';
 import { trigCam, handleFoto, rmFoto, clearSlotHighlight } from './services/camera.js';
-import { saveRecordToOfflineQueue, getOfflineRecords, deleteOfflineRecord, getPendingPhotos, getPhotosByRecordUid, deletePhotosByRecordUid, markPhotoUploaded, getOfflineCount as dbGetOfflineCount } from './services/db.js';
+import { saveRecordToOfflineQueue, getOfflineRecords, deleteOfflineRecord, getPendingPhotos, getPhotosByRecordUid, deletePhotosByRecordUid, markPhotoUploaded, getOfflineCount as dbGetOfflineCount, purgeUploadedPhotos, purgeOfflineRecords } from './services/db.js';
 
 if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist().then(function(granted) {
-    if (granted) console.log('Persistent storage granted');
+    if (granted) {
+      console.log('Persistent storage granted — los datos no serán eliminados automáticamente');
+    } else {
+      console.warn('Persistent storage denied — el navegador está en modo best-effort. Los datos pueden ser eliminados bajo presión de almacenamiento.');
+      if (navigator.storage && navigator.storage.estimate) {
+        navigator.storage.estimate().then(function(est) {
+          console.log('Quota: ' + (est.quota / 1048576).toFixed(1) + ' MB | Usage: ' + (est.usage / 1048576).toFixed(1) + ' MB | Free: ' + ((est.quota - est.usage) / 1048576).toFixed(1) + ' MB');
+        });
+      }
+    }
   });
 }
 
@@ -271,6 +280,8 @@ export async function syncOfflineQueue() {
   } else {
     showToast(`☁️ Sincronización completada: ${synced} enviados ✓`);
   }
+  purgeUploadedPhotos().catch(function() {});
+  purgeOfflineRecords(state.projectKey).catch(function() {});
   updateExportPanel();
   actualizarBotonSync();
 }

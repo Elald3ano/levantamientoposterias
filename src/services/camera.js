@@ -153,10 +153,33 @@ export function handleFoto(e, i) {
         const objectUrl = URL.createObjectURL(blob);
         state.photos[i].objectUrl = objectUrl;
 
-        savePhoto(name, blob, state.uid).catch(err => {
-          console.error('Error guardando foto en IndexedDB:', err);
-          showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
-        });
+        if (blob.size > 200 * 1024) {
+          console.warn('Foto ' + name + ' supera 200 KB: ' + (blob.size / 1024).toFixed(1) + ' KB');
+        }
+
+        if (navigator.storage && navigator.storage.estimate) {
+          navigator.storage.estimate().then(function(est) {
+            var free = est.quota - est.usage;
+            if (free < 10 * 1048576) {
+              showToast('⚠️ Límite de seguridad del navegador alcanzado. Limpia fotos antiguas', 'error');
+              return;
+            }
+            savePhoto(name, blob, state.uid).catch(err => {
+              console.error('Error guardando foto en IndexedDB:', err);
+              showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
+            });
+          }).catch(function() {
+            savePhoto(name, blob, state.uid).catch(err => {
+              console.error('Error guardando foto en IndexedDB:', err);
+              showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
+            });
+          });
+        } else {
+          savePhoto(name, blob, state.uid).catch(err => {
+            console.error('Error guardando foto en IndexedDB:', err);
+            showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
+          });
+        }
 
         const slot=document.getElementById(`slot-${i}`);
         let im=slot.querySelector('img');

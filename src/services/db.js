@@ -183,3 +183,34 @@ export function deletePhotosByRecordUid(recordUid) {
     )
   );
 }
+
+export function purgeUploadedPhotos() {
+  return withRetry(() =>
+    storeTx('photos', 'readwrite').then(store =>
+      promisifyRequest(store.getAll()).then(all => {
+        var uploaded = all.filter(p => p.uploaded);
+        return Promise.all(uploaded.map(p => promisifyRequest(store.delete(p.name))));
+      })
+    )
+  );
+}
+
+export function purgeOfflineRecords(projectKey) {
+  return withRetry(() =>
+    storeTx('offline_queue', 'readwrite').then(store => {
+      const index = store.index('projectKey');
+      return promisifyRequest(index.getAll(projectKey)).then(records => {
+        return Promise.all(records.map(r =>
+          getPhotosByRecordUid(r.uid).then(photos => {
+            if (photos.every(p => p.uploaded)) {
+              return Promise.all([
+                ...photos.map(p => deletePhoto(p.name)),
+                promisifyRequest(store.delete(r.uid))
+              ]);
+            }
+          })
+        ));
+      });
+    })
+  );
+}
