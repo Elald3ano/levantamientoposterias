@@ -153,6 +153,7 @@ export function handleFoto(e, i) {
         const objectUrl = URL.createObjectURL(blob);
         state.photos[i].objectUrl = objectUrl;
 
+        console.log('Foto ' + name + ' — tamaño: ' + (blob.size / 1024).toFixed(1) + ' KB');
         if (blob.size > 200 * 1024) {
           console.warn('Foto ' + name + ' supera 200 KB: ' + (blob.size / 1024).toFixed(1) + ' KB');
         }

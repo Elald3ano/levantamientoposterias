@@ -482,8 +482,12 @@ export async function saveAndExport() {
     foto2: state.photos[1]?.name||'',
     foto3: state.photos[2]?.name||'',
     observaciones: document.getElementById('f-obs').value,
-    _photos: state.photos.filter(Boolean)
+    _photos: state.photos.filter(Boolean).map(function(p) {
+      return { name: p.name, url: p.url || '' };
+    })
   };
+
+  console.log('Guardando registro ' + record.uid + ' — tamaño estimado: ' + JSON.stringify(record).length + ' bytes');
 
   try {
     await withTimeout(sbSaveRecord(record), CONFIG.NETWORK_TIMEOUT_SAVE);
@@ -1424,6 +1428,30 @@ function bindAllEvents() {
   ['click','keypress','touchstart','scroll'].forEach(ev =>
     document.addEventListener(ev, resetActivityTimer, { passive: true })
   );
+
+  // Inject "Limpiar DB Local" button into offline queue box
+  var offlineBox = document.getElementById('offline-queue-box');
+  if (offlineBox) {
+    var ecBody = offlineBox.querySelector('.ec-body');
+    if (ecBody && !document.getElementById('btn-clear-local-db')) {
+      var clearBtn = document.createElement('button');
+      clearBtn.id = 'btn-clear-local-db';
+      clearBtn.style.cssText = 'margin-top:6px;width:100%;padding:8px;background:transparent;border:1px solid var(--red);border-radius:6px;color:var(--red);font-family:Inter,sans-serif;font-size:12px;font-weight:700;cursor:pointer';
+      clearBtn.textContent = '🗑 Limpiar Base de Datos Local';
+      clearBtn.addEventListener('click', function() {
+        if (!confirm('¿Eliminar TODOS los datos locales (fotos y registros offline)? Los datos en Supabase no se borrarán.')) return;
+        Promise.all([
+          indexedDB.deleteDatabase('posteapp_db'),
+          caches.delete('posteapp-photos')
+        ]).then(function() {
+          showToast('✓ Base de datos local eliminada. Recarga la página.');
+        }).catch(function(e) {
+          showToast('Error al limpiar: ' + e.message, 'error');
+        });
+      });
+      ecBody.appendChild(clearBtn);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════
