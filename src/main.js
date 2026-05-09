@@ -1243,6 +1243,11 @@ function initApp() {
   document.getElementById('project-screen').style.display = 'flex';
   document.getElementById('ps-sub').textContent = '✓ App lista. Ingresa el código de acceso.';
   updateConnDot();
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().then(function(granted) {
+      if (granted) console.log('Persistent storage granted');
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════

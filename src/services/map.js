@@ -117,7 +117,7 @@ async function downloadOfflineMap() {
   }
 
   var currentZoom = Math.floor(map.getZoom());
-  var MAX_ZOOM = 17;
+  var MAX_ZOOM = 18;
   var allTiles = collectAllTiles(map, currentZoom, MAX_ZOOM);
   var total = allTiles.length;
 
@@ -128,6 +128,16 @@ async function downloadOfflineMap() {
   if (total === 0) {
     showToast('No hay mosaicos que descargar en esta \u00E1rea', 'warning');
     return;
+  }
+
+  if (navigator.storage && navigator.storage.estimate) {
+    var est = await navigator.storage.estimate();
+    var free = est.quota - est.usage;
+    var needed = total * 30 * 1024;
+    if (needed > free * 0.8) {
+      showToast('Espacio insuficiente en el navegador para este nivel de detalle', 'error');
+      return;
+    }
   }
 
   var cacheName = await resolveEsriCache();
@@ -154,12 +164,29 @@ async function downloadOfflineMap() {
           return cache.put(url, resp);
         }).then(function() {
           downloaded++;
+        }).catch(function(err) {
+          if (err.name === 'QuotaExceededError' || String(err).toLowerCase().indexOf('quota') !== -1) {
+            cache.delete(url);
+            throw err; // let allSettled catch it, abort loop below
+          }
+          throw err;
         });
       });
     }));
 
     var batchFailed = results.filter(function(r) { return r.status === 'rejected'; }).length;
     failed += batchFailed;
+
+    var quotaHit = results.some(function(r) {
+      return r.status === 'rejected' && r.reason && (
+        r.reason.name === 'QuotaExceededError' ||
+        String(r.reason).toLowerCase().indexOf('quota') !== -1
+      );
+    });
+    if (quotaHit) {
+      showToast('Memoria del navegador llena. Por favor, borra mapas antiguos o datos del sitio', 'error');
+      break;
+    }
 
     showToast('Descargando mapa: ' + (downloaded + skipped) + ' de ' + total + '...', 'info');
   }
