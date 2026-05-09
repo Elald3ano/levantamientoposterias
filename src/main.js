@@ -5,6 +5,12 @@ import { captureGPS, autoCaptureGPS, openMap, closeMap, confirmMapCoord, openPro
 import { trigCam, handleFoto, rmFoto, clearSlotHighlight } from './services/camera.js';
 import { saveRecordToOfflineQueue, getOfflineRecords, deleteOfflineRecord, getPendingPhotos, getPhotosByRecordUid, deletePhotosByRecordUid, markPhotoUploaded, getOfflineCount as dbGetOfflineCount } from './services/db.js';
 
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().then(function(granted) {
+    if (granted) console.log('Persistent storage granted');
+  });
+}
+
 // ═══════════════════════════════════════════════════
 // POLYFILLS & ERROR HANDLERS (execute immediately)
 // ═══════════════════════════════════════════════════
@@ -1243,11 +1249,6 @@ function initApp() {
   document.getElementById('project-screen').style.display = 'flex';
   document.getElementById('ps-sub').textContent = '✓ App lista. Ingresa el código de acceso.';
   updateConnDot();
-  if (navigator.storage && navigator.storage.persist) {
-    navigator.storage.persist().then(function(granted) {
-      if (granted) console.log('Persistent storage granted');
-    });
-  }
 }
 
 // ═══════════════════════════════════════════════════
