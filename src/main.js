@@ -1203,32 +1203,37 @@ async function verifyCode() {
     return;
   }
 
+  const tokenKey = 'pf_access_' + input;
   let data = null;
-  if (SB) {
+
+  if (navigator.onLine && SB) {
     try {
       const res = await withTimeout(
         SB.from('proyectos').select('*').eq('codigo_acceso', input).eq('activo', true).single(),
         CONFIG.NETWORK_TIMEOUT_QUERY
       );
-      if (!res.error) data = res.data;
-    } catch (e) { /* offline — buscar en caché */ }
+      if (!res.error) {
+        data = res.data;
+        safeSetItem(tokenKey, JSON.stringify({
+          nombre: data.nombre,
+          proyecto_key: data.proyecto_key || data.nombre.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,''),
+          modo: data.modo || 'libre'
+        }));
+      }
+    } catch (e) { /* offline */ }
   }
 
   if (!data) {
     try {
-      const cache = JSON.parse(localStorage.getItem('pf_projects_cache') || '[]');
-      data = cache.find(p => p.codigo_acceso === input && p.activo);
-    } catch (_) {}
-  }
-  if (!data) {
-    try {
-      var rawMapping = localStorage.getItem('pf_access_project_' + input);
-      if (rawMapping) data = JSON.parse(rawMapping);
+      const raw = localStorage.getItem(tokenKey);
+      if (raw) data = JSON.parse(raw);
     } catch (_) {}
   }
 
   if (!data) {
-    showToast('⚠️ Código inválido o proyecto inactivo');
+    showToast(navigator.onLine
+      ? '⚠️ Código inválido o proyecto inactivo'
+      : 'Para el primer ingreso a este proyecto necesitas conexión a internet');
     return;
   }
 
@@ -1236,11 +1241,6 @@ async function verifyCode() {
   state.accessCode = input;
   safeSetItem('pf_access_code', input);
   safeSetItem('pf_access_ts', Date.now());
-  safeSetItem('pf_access_project_' + input, JSON.stringify({
-    nombre: data.nombre,
-    proyecto_key: data.proyecto_key || data.nombre.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,''),
-    modo: data.modo || 'libre'
-  }));
   document.getElementById('access-section').style.display = 'none';
   document.getElementById('ps-create-section').style.display = 'none';
   document.getElementById('ps-sub').textContent = '';
