@@ -131,12 +131,38 @@ export function deleteOfflineRecord(uid) {
   );
 }
 
-export function savePhoto(name, blob, recordUid) {
+export function savePhoto(name, recordUid) {
   return withRetry(() =>
     storeTx('photos', 'readwrite').then(store =>
-      promisifyRequest(store.put({ name, blob, record_uid: recordUid, uploaded: false }))
+      promisifyRequest(store.put({ name, record_uid: recordUid, uploaded: false }))
     )
   );
+}
+
+export function savePhotoBlobToCache(name, blob) {
+  if (typeof caches === 'undefined') return Promise.resolve();
+  return caches.open('posteapp-photos').then(function(cache) {
+    return cache.put(name, new Response(blob, {
+      headers: { 'Content-Type': 'image/jpeg' }
+    }));
+  });
+}
+
+export function getPhotoBlobFromCache(name) {
+  if (typeof caches === 'undefined') return Promise.resolve(null);
+  return caches.open('posteapp-photos').then(function(cache) {
+    return cache.match(name).then(function(response) {
+      if (response) return response.blob();
+      return null;
+    });
+  });
+}
+
+export function deletePhotoFromCache(name) {
+  if (typeof caches === 'undefined') return Promise.resolve();
+  return caches.open('posteapp-photos').then(function(cache) {
+    return cache.delete(name);
+  });
 }
 
 export function getPendingPhotos() {
@@ -171,7 +197,10 @@ export function markPhotoUploaded(name) {
 export function deletePhoto(name) {
   return withRetry(() =>
     storeTx('photos', 'readwrite').then(store =>
-      promisifyRequest(store.delete(name))
+      Promise.all([
+        promisifyRequest(store.delete(name)),
+        deletePhotoFromCache(name)
+      ])
     )
   );
 }
@@ -179,7 +208,9 @@ export function deletePhoto(name) {
 export function deletePhotosByRecordUid(recordUid) {
   return withRetry(() =>
     getPhotosByRecordUid(recordUid).then(photos =>
-      Promise.all(photos.map(p => deletePhoto(p.name)))
+      Promise.all(photos.map(p =>
+        Promise.all([deletePhoto(p.name), deletePhotoFromCache(p.name)])
+      ))
     )
   );
 }
@@ -189,7 +220,12 @@ export function purgeUploadedPhotos() {
     storeTx('photos', 'readwrite').then(store =>
       promisifyRequest(store.getAll()).then(all => {
         var uploaded = all.filter(p => p.uploaded);
-        return Promise.all(uploaded.map(p => promisifyRequest(store.delete(p.name))));
+        return Promise.all(uploaded.map(p =>
+          Promise.all([
+            promisifyRequest(store.delete(p.name)),
+            deletePhotoFromCache(p.name)
+          ])
+        ));
       })
     )
   );

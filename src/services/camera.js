@@ -1,7 +1,7 @@
 import { state, CONFIG } from '../store/state.js';
 import { sbUploadPhoto } from '../api/supabase.js';
 import { showToast } from '../main.js';
-import { savePhoto, markPhotoUploaded } from './db.js';
+import { savePhoto, markPhotoUploaded, savePhotoBlobToCache, getPhotoBlobFromCache } from './db.js';
 
 export function trigCam(i) {
   if (state.photos[i]) return;
@@ -157,6 +157,14 @@ export function handleFoto(e, i) {
           console.warn('Foto ' + name + ' supera 200 KB: ' + (blob.size / 1024).toFixed(1) + ' KB');
         }
 
+        function doSave() {
+          savePhotoBlobToCache(name, blob).catch(function() {});
+          savePhoto(name, state.uid).catch(function(err) {
+            console.error('Error guardando foto en IndexedDB:', err);
+            showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
+          });
+        }
+
         if (navigator.storage && navigator.storage.estimate) {
           navigator.storage.estimate().then(function(est) {
             var free = est.quota - est.usage;
@@ -164,21 +172,10 @@ export function handleFoto(e, i) {
               showToast('⚠️ Límite de seguridad del navegador alcanzado. Limpia fotos antiguas', 'error');
               return;
             }
-            savePhoto(name, blob, state.uid).catch(err => {
-              console.error('Error guardando foto en IndexedDB:', err);
-              showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
-            });
-          }).catch(function() {
-            savePhoto(name, blob, state.uid).catch(err => {
-              console.error('Error guardando foto en IndexedDB:', err);
-              showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
-            });
-          });
+            doSave();
+          }).catch(function() { doSave(); });
         } else {
-          savePhoto(name, blob, state.uid).catch(err => {
-            console.error('Error guardando foto en IndexedDB:', err);
-            showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
-          });
+          doSave();
         }
 
         const slot=document.getElementById(`slot-${i}`);

@@ -3,7 +3,7 @@ import { state, CONFIG, SESSION_TIMEOUT, DYNAMIC_FIELDS, DYN_IDS, CSV_COLS, CSV_
 import { SB, BUCKET_FOTOS, SUPABASE_URL, SUPABASE_KEY, withTimeout, sbUploadPhoto, sbSaveRecord, sbDeleteProject, sbUploadKMZ, loadAdminCode, sbGetMaxSeq } from './api/supabase.js';
 import { captureGPS, autoCaptureGPS, openMap, closeMap, confirmMapCoord, openProjectMap, updateKMZSection, adminKMZChanged, adminDeleteKMZ, stopUserLocationMarker, clearAreaInteres } from './services/map.js';
 import { trigCam, handleFoto, rmFoto, clearSlotHighlight } from './services/camera.js';
-import { saveRecordToOfflineQueue, getOfflineRecords, deleteOfflineRecord, getPendingPhotos, getPhotosByRecordUid, deletePhotosByRecordUid, markPhotoUploaded, getOfflineCount as dbGetOfflineCount, purgeUploadedPhotos, purgeOfflineRecords } from './services/db.js';
+import { saveRecordToOfflineQueue, getOfflineRecords, deleteOfflineRecord, getPendingPhotos, getPhotosByRecordUid, deletePhotosByRecordUid, markPhotoUploaded, getOfflineCount as dbGetOfflineCount, purgeUploadedPhotos, purgeOfflineRecords, getPhotoBlobFromCache } from './services/db.js';
 
 if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist().then(function(granted) {
@@ -229,7 +229,9 @@ export async function syncOfflineQueue() {
     const pendingPhotos = await getPendingPhotos();
     for (const p of pendingPhotos) {
       try {
-        await withTimeout(sbUploadPhoto(p.blob, p.name), CONFIG.NETWORK_TIMEOUT_UPLOAD);
+        var blob = p.blob || await getPhotoBlobFromCache(p.name);
+        if (!blob) continue;
+        await withTimeout(sbUploadPhoto(blob, p.name), CONFIG.NETWORK_TIMEOUT_UPLOAD);
         await markPhotoUploaded(p.name);
       } catch(e) { /* retry next time */ }
     }
@@ -255,7 +257,9 @@ export async function syncOfflineQueue() {
     try {
       const photos = await getPhotosByRecordUid(record.uid);
       for (const p of photos) {
-        await withTimeout(sbUploadPhoto(p.blob, p.name), CONFIG.NETWORK_TIMEOUT_UPLOAD);
+        var pBlob = p.blob || await getPhotoBlobFromCache(p.name);
+        if (!pBlob) continue;
+        await withTimeout(sbUploadPhoto(pBlob, p.name), CONFIG.NETWORK_TIMEOUT_UPLOAD);
       }
       await withTimeout(sbSaveRecord(record), CONFIG.NETWORK_TIMEOUT_SAVE);
       await deletePhotosByRecordUid(record.uid);
