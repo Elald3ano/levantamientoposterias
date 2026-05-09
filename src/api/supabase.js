@@ -86,13 +86,20 @@ export async function loadAdminCode() {
 }
 
 export async function sbGetMaxSeq(projectKey) {
-  const { data, error } = await SB
-    .from('registros')
-    .select('seq')
-    .eq('proyecto', projectKey)
-    .order('seq', { ascending: false })
-    .limit(1)
-    .single();
-  if (error) return 0;
-  return (data && data.seq) ? data.seq : 0;
+  if (!navigator.onLine) return 0;
+  try {
+    const { data, error } = await withTimeout(
+      SB.from('registros')
+        .select('seq')
+        .eq('proyecto', projectKey)
+        .order('seq', { ascending: false })
+        .limit(1)
+        .single(),
+      CONFIG.NETWORK_TIMEOUT_QUERY
+    );
+    if (error) return 0;
+    return (data && data.seq) ? data.seq : 0;
+  } catch (e) {
+    return 0;
+  }
 }

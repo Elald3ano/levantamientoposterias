@@ -1078,6 +1078,7 @@ export function startProject(nameOverride) {
 }
 
 async function openProject() {
+  try {
   state.records = [];
   if (SB) {
     try {
@@ -1112,11 +1113,6 @@ async function openProject() {
     }
   }
 
-  document.getElementById('project-screen').style.display = 'none';
-  document.getElementById('header-logout-btn').style.display = 'inline';
-  const modeIcon = state.projectMode === 'estricto' ? '🔒' : '🆓';
-  document.getElementById('project-chip').textContent = modeIcon + ' ' + state.projectName.slice(0, 18);
-
   var localMax = state.records.length > 0 ? Math.max(...state.records.map(r => r.seq)) + 1 : 1;
   if (SB) {
     try {
@@ -1144,6 +1140,15 @@ async function openProject() {
   }
   startDraftAutoSave();
   setTimeout(() => syncOfflineQueue(), CONFIG.SYNC_INITIAL_DELAY);
+  } catch (e) {
+    console.error('Error en openProject:', e);
+    showToast('Error al abrir proyecto: ' + (e.message || 'inesperado'), 'error');
+  } finally {
+    document.getElementById('project-screen').style.display = 'none';
+    document.getElementById('header-logout-btn').style.display = 'inline';
+    const modeIcon = state.projectMode === 'estricto' ? '🔒' : '🆓';
+    document.getElementById('project-chip').textContent = modeIcon + ' ' + state.projectName.slice(0, 18);
+  }
 }
 
 export function promptChangeProject() {

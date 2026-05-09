@@ -87,6 +87,17 @@ export default defineConfig({
                 maxAgeSeconds: 90 * 24 * 60 * 60
               }
             }
+          },
+          {
+            urlPattern: /^https:\/\/unpkg\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cdn-libs',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 90 * 24 * 60 * 60
+              }
+            }
           }
         ]
       },
