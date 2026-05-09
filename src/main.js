@@ -1,3 +1,4 @@
+import './style.css';
 import { state, CONFIG, SESSION_TIMEOUT, DYNAMIC_FIELDS, DYN_IDS, CSV_COLS, CSV_BASE, CSV_DYN, CSV_END } from './store/state.js';
 import { SB, BUCKET_FOTOS, SUPABASE_URL, SUPABASE_KEY, withTimeout, sbUploadPhoto, sbSaveRecord, sbDeleteProject, sbUploadKMZ, loadAdminCode } from './api/supabase.js';
 import { captureGPS, autoCaptureGPS, openMap, closeMap, confirmMapCoord, openProjectMap, updateKMZSection, adminKMZChanged, adminDeleteKMZ, stopUserLocationMarker, clearAreaInteres } from './services/map.js';
