@@ -155,7 +155,7 @@ export function handleFoto(e, i) {
 
         savePhoto(name, blob, state.uid).catch(err => {
           console.error('Error guardando foto en IndexedDB:', err);
-          showToast('⚠️ Almacenamiento local lleno — libera espacio', 'error');
+          showToast('⚠️ No se pudo guardar: ' + (err.name || err.message || 'Error desconocido'), 'error');
         });
 
         const slot=document.getElementById(`slot-${i}`);

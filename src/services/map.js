@@ -117,11 +117,11 @@ async function downloadOfflineMap() {
   }
 
   var currentZoom = Math.floor(map.getZoom());
-  var MAX_ZOOM = 18;
+  var MAX_ZOOM = 17;
   var allTiles = collectAllTiles(map, currentZoom, MAX_ZOOM);
   var total = allTiles.length;
 
-  if (total > 2000) {
+  if (total > 1000) {
     showToast('\u00C1rea muy grande: Ac\u00E9rcate m\u00E1s a la zona de trabajo (' + total + ' tiles)', 'error');
     return;
   }
