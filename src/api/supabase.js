@@ -86,7 +86,7 @@ export async function loadAdminCode() {
 }
 
 export async function sbGetMaxSeq(projectKey) {
-  if (!navigator.onLine) return 0;
+  if (!navigator.onLine || !SB) return 0;
   try {
     const { data, error } = await withTimeout(
       SB.from('registros')

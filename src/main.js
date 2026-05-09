@@ -1077,10 +1077,20 @@ export function startProject(nameOverride) {
   openProject();
 }
 
+async function loadOfflineRecords() {
+  try {
+    const offlineRecords = await getOfflineRecords(state.projectKey);
+    if (offlineRecords && offlineRecords.length) {
+      state.records = offlineRecords;
+    }
+  } catch (_) {}
+}
+
 async function openProject() {
   try {
   state.records = [];
-  if (SB) {
+
+  if (navigator.onLine && SB) {
     try {
       const { data, error } = await SB
         .from('registros')
@@ -1103,18 +1113,12 @@ async function openProject() {
         }));
       }
     } catch (e) {
-      console.warn('Offline — usando datos locales');
-      try {
-        const offlineRecords = await getOfflineRecords(state.projectKey);
-        if (offlineRecords && offlineRecords.length) {
-          state.records = offlineRecords;
-        }
-      } catch (_) {}
+      console.warn('Supabase no disponible — usando datos locales');
+      showToast('📡 Modo Offline: Usando datos locales');
+      await loadOfflineRecords();
     }
-  }
 
-  var localMax = state.records.length > 0 ? Math.max(...state.records.map(r => r.seq)) + 1 : 1;
-  if (SB) {
+    var localMax = state.records.length > 0 ? Math.max(...state.records.map(r => r.seq)) + 1 : 1;
     try {
       var dbMax = await sbGetMaxSeq(state.projectKey);
       state.seqNum = Math.max(localMax, dbMax + 1);
@@ -1122,8 +1126,11 @@ async function openProject() {
       state.seqNum = localMax;
     }
   } else {
-    state.seqNum = localMax;
+    showToast('📡 Modo Offline: Usando datos locales');
+    await loadOfflineRecords();
+    state.seqNum = state.records.length > 0 ? Math.max(...state.records.map(r => r.seq)) + 1 : 1;
   }
+
   state.uid = genUID();
   refreshFilenames();
   updateExportPanel();
@@ -1139,7 +1146,9 @@ async function openProject() {
     }
   }
   startDraftAutoSave();
-  setTimeout(() => syncOfflineQueue(), CONFIG.SYNC_INITIAL_DELAY);
+  if (navigator.onLine) {
+    setTimeout(() => syncOfflineQueue(), CONFIG.SYNC_INITIAL_DELAY);
+  }
   } catch (e) {
     console.error('Error en openProject:', e);
     showToast('Error al abrir proyecto: ' + (e.message || 'inesperado'), 'error');
