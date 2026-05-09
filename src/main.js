@@ -1,6 +1,6 @@
 import './style.css';
 import { state, CONFIG, SESSION_TIMEOUT, DYNAMIC_FIELDS, DYN_IDS, CSV_COLS, CSV_BASE, CSV_DYN, CSV_END } from './store/state.js';
-import { SB, BUCKET_FOTOS, SUPABASE_URL, SUPABASE_KEY, withTimeout, sbUploadPhoto, sbSaveRecord, sbDeleteProject, sbUploadKMZ, loadAdminCode } from './api/supabase.js';
+import { SB, BUCKET_FOTOS, SUPABASE_URL, SUPABASE_KEY, withTimeout, sbUploadPhoto, sbSaveRecord, sbDeleteProject, sbUploadKMZ, loadAdminCode, sbGetMaxSeq } from './api/supabase.js';
 import { captureGPS, autoCaptureGPS, openMap, closeMap, confirmMapCoord, openProjectMap, updateKMZSection, adminKMZChanged, adminDeleteKMZ, stopUserLocationMarker, clearAreaInteres } from './services/map.js';
 import { trigCam, handleFoto, rmFoto, clearSlotHighlight } from './services/camera.js';
 import { saveRecordToOfflineQueue, getOfflineRecords, deleteOfflineRecord, getPendingPhotos, getPhotosByRecordUid, deletePhotosByRecordUid, markPhotoUploaded, getOfflineCount as dbGetOfflineCount } from './services/db.js';
@@ -107,8 +107,8 @@ export function updateConnDot() {
 // ═══════════════════════════════════════════════════
 export function genUID() {
   const d = new Date();
-  const s = d.getFullYear().toString().slice(2) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
-  return `POST-${s}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const s = d.getFullYear().toString() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  return 'POST-' + s + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
 }
 
 export function refreshFilenames() {
@@ -428,8 +428,11 @@ export async function saveAndExport() {
     return;
   }
 
-  if (state.records.some(r => r.n_poste && r.n_poste.toLowerCase() === nPoste.toLowerCase())) {
-    if (!confirm(`⚠️ El poste "${nPoste}" ya existe en este proyecto.\n\n¿Guardar de todas formas?`)) return;
+  const GENERIC_POSTES = ['n/a', 's/n', 'sin nombre', 'sin placa', ''];
+  if (!GENERIC_POSTES.includes(nPoste.toLowerCase())
+      && state.records.some(r => r.n_poste && r.n_poste.toLowerCase() === nPoste.toLowerCase())) {
+    showToast('⚠️ El poste "' + nPoste + '" ya existe en este proyecto', 'error');
+    return;
   }
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ GUARDANDO...'; }
@@ -475,10 +478,16 @@ export async function saveAndExport() {
     newRecord();
   } catch(e) {
     console.error('Error guardando en Supabase:', e);
-    saveToOfflineQueue(record);
-    state.records.push(record);
-    showToast(`⚠️ Sin conexión — guardado local. Se sincronizará al reconectar.`);
-    newRecord();
+    var msg = String(e.message || e);
+    if (msg.toUpperCase().indexOf('DUPLICADO') !== -1) {
+      showToast('⚠️ Poste duplicado en el servidor — verifica el número', 'error');
+      // No guardar localmente ni avanzar al siguiente poste
+    } else {
+      saveToOfflineQueue(record);
+      state.records.push(record);
+      showToast('⚠️ Sin conexión — guardado local. Se sincronizará al reconectar.');
+      newRecord();
+    }
   }
   } finally {
     hideLoading();
@@ -1108,7 +1117,17 @@ async function openProject() {
   const modeIcon = state.projectMode === 'estricto' ? '🔒' : '🆓';
   document.getElementById('project-chip').textContent = modeIcon + ' ' + state.projectName.slice(0, 18);
 
-  state.seqNum = state.records.length > 0 ? Math.max(...state.records.map(r => r.seq)) + 1 : 1;
+  var localMax = state.records.length > 0 ? Math.max(...state.records.map(r => r.seq)) + 1 : 1;
+  if (SB) {
+    try {
+      var dbMax = await sbGetMaxSeq(state.projectKey);
+      state.seqNum = Math.max(localMax, dbMax + 1);
+    } catch (e) {
+      state.seqNum = localMax;
+    }
+  } else {
+    state.seqNum = localMax;
+  }
   state.uid = genUID();
   refreshFilenames();
   updateExportPanel();
@@ -1201,6 +1220,12 @@ async function verifyCode() {
       data = cache.find(p => p.codigo_acceso === input && p.activo);
     } catch (_) {}
   }
+  if (!data) {
+    try {
+      var rawMapping = localStorage.getItem('pf_access_project_' + input);
+      if (rawMapping) data = JSON.parse(rawMapping);
+    } catch (_) {}
+  }
 
   if (!data) {
     showToast('⚠️ Código inválido o proyecto inactivo');
@@ -1211,6 +1236,11 @@ async function verifyCode() {
   state.accessCode = input;
   safeSetItem('pf_access_code', input);
   safeSetItem('pf_access_ts', Date.now());
+  safeSetItem('pf_access_project_' + input, JSON.stringify({
+    nombre: data.nombre,
+    proyecto_key: data.proyecto_key || data.nombre.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ]/g,''),
+    modo: data.modo || 'libre'
+  }));
   document.getElementById('access-section').style.display = 'none';
   document.getElementById('ps-create-section').style.display = 'none';
   document.getElementById('ps-sub').textContent = '';

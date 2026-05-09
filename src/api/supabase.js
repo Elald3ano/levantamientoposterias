@@ -84,3 +84,15 @@ export async function loadAdminCode() {
     if (data) state.ADMIN_CODE = data.value;
   } catch(e) { /* usar fallback '4839' */ }
 }
+
+export async function sbGetMaxSeq(projectKey) {
+  const { data, error } = await SB
+    .from('registros')
+    .select('seq')
+    .eq('proyecto', projectKey)
+    .order('seq', { ascending: false })
+    .limit(1)
+    .single();
+  if (error) return 0;
+  return (data && data.seq) ? data.seq : 0;
+}
