@@ -79,7 +79,7 @@ header{background:var(--surface);border-bottom:2px solid var(--accent);height:56
 .chr-dot{width:5px;height:5px;background:var(--accent);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
 .chr-shadow{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:10px solid var(--accent)}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(11,95,165,.4)}50%{box-shadow:0 0 0 8px rgba(11,95,165,0)}}
-.coord-live{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(252,252,252,.92);border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.08);border-radius:6px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--green);z-index:1000;pointer-events:none;white-space:nowrap}
+.coord-live{position:absolute;bottom:50px;left:6px;background:rgba(252,252,252,.92);border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.08);border-radius:6px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--green);z-index:1000;pointer-events:none;white-space:nowrap}
 
 /* ── FOTOS ── */
 .foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
